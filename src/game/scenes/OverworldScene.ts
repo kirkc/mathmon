@@ -42,6 +42,18 @@ export class OverworldScene extends Phaser.Scene {
     this.map = MAPS[save.player.mapKey] ?? MAPS.overworld;
     this.playerTile = { x: save.player.tileX, y: save.player.tileY };
     this.facing = save.player.facing;
+
+    // Safety net: if a saved position is no longer walkable (e.g. the map
+    // changed between versions), respawn at the town spawn point.
+    if (!this.isTileWalkable(this.playerTile.x, this.playerTile.y)) {
+      this.map = MAPS[worldConfig.spawn.mapKey];
+      this.playerTile = { x: worldConfig.spawn.tileX, y: worldConfig.spawn.tileY };
+      this.facing = worldConfig.spawn.facing;
+      save.player.mapKey = worldConfig.spawn.mapKey;
+      save.player.tileX = this.playerTile.x;
+      save.player.tileY = this.playerTile.y;
+      saveService.persist();
+    }
     this.moving = false;
     this.pendingBattleNpc = null;
     this.npcSprites.clear();
@@ -188,14 +200,25 @@ export class OverworldScene extends Phaser.Scene {
     return `player-${dirKey}-${stepping ? this.stepFrame : 0}`;
   }
 
-  private isWalkable(x: number, y: number): boolean {
+  /** Terrain-only walkability (ignores NPCs). */
+  private isTileWalkable(x: number, y: number): boolean {
     const grid = this.map.grid;
     if (y < 0 || y >= grid.length || x < 0 || x >= grid[y].length) return false;
-    if (SOLID_TILES.has(grid[y][x])) return false;
+    return !SOLID_TILES.has(grid[y][x]);
+  }
+
+  private isWalkable(x: number, y: number): boolean {
+    if (!this.isTileWalkable(x, y)) return false;
     for (const npc of this.map.npcs) {
       if (npc.tileX === x && npc.tileY === y) return false;
     }
     return true;
+  }
+
+  /** Which themed area governs encounters at this row (zone bands). */
+  private areaIdAt(y: number) {
+    const zone = this.map.zones?.find((z) => y >= z.y1 && y <= z.y2);
+    return zone?.areaId ?? this.map.areaId;
   }
 
   private onStepComplete(x: number, y: number): void {
@@ -284,7 +307,7 @@ export class OverworldScene extends Phaser.Scene {
 
   private startWildBattle(): void {
     chiptune.playSfx('encounter');
-    const enemy = encounterService.rollWildCreature(this.map.areaId);
+    const enemy = encounterService.rollWildCreature(this.areaIdAt(this.playerTile.y));
     const species = CREATURE_SPECIES[enemy.speciesId];
     this.launchBattle({
       battleType: 'wild',

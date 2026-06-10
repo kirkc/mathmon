@@ -2,6 +2,8 @@ import type { AreaId } from '../../config/worldConfig';
 
 /**
  * Maps are authored as ASCII grids — readable, diffable, and easy to extend.
+ * The overworld grid was generated with a connectivity-validated script
+ * (every walkable tile is reachable from the town spawn).
  *
  * Legend:
  *   T  tree (solid)            .  short grass
@@ -47,12 +49,20 @@ export interface SignDefinition {
   text: string;
 }
 
+/** Row-band encounter zones: rows y1..y2 use the given area's wild table. */
+export interface EncounterZone {
+  y1: number;
+  y2: number;
+  areaId: AreaId;
+}
+
 export interface MapDefinition {
   key: string;
   name: string;
   grid: string[];
-  /** Which themed area governs wild encounters here. */
+  /** Fallback area when no zone matches. */
   areaId: AreaId;
+  zones?: EncounterZone[];
   warps: Record<string, WarpTarget>; // keyed by "x,y"
   npcs: NpcDefinition[];
   signs: SignDefinition[];
@@ -60,38 +70,54 @@ export interface MapDefinition {
 }
 
 const OVERWORLD_GRID = [
-  'TTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-  'TTTT,,,,,TT.....TT,,,,,,TTTT',
-  'TTT,,,,,,TT..:..TT,,,,,,,TTT',
-  'TTT,,,,,,,...:...,,,,,,,,TTT',
-  'TTT,,,,,,,...:...,,,,,,,,TTT',
-  'TTTT,,,,,....:....,,,,,,TTTT',
-  'TTTT,,,......:......,,,,TTTT',
-  'TTTTT.....f..:..f......TTTTT',
-  'TTTTT........:.........TTTTT',
-  'TTTT....S....:....f....TTTTT',
-  'TTTT.........:.........TTTTT',
-  'TTTT,,,,.....:......,,,TTTTT',
-  'TTTT,,,,.....:......,,,TTTTT',
-  'TTTT,,,,.....:......,,,TTTTT',
-  'TTTTTTTTT....:....TTTTTTTTTT',
-  'TTTTTTTTT....:....TTTTTTTTTT',
-  'TTTT.........:.........TTTTT',
-  'TTT....RRRR..:..RRRR....TTTT',
-  'TTT....RBBR..:..RBBR....TTTT',
-  'TTT....RBdR..:..RBDR....TTTT',
-  'TTT....:::...:...:::....TTTT',
-  'TTT..f.......:.......f..TTTT',
-  'TTT......::::::::S......TTTT',
-  'TTT......:......:.......TTTT',
-  'TTT...RRRR......:..ff...TTTT',
-  'TTT...RBBR......:.......TTTT',
-  'TTT...RBdR......:..f....TTTT',
-  'TTT...:::.......:.......TTTT',
-  'TTT.............:....WWWTTTT',
-  'TTTf............:...WWWWTTTT',
-  'TTTT............:...WWWTTTTT',
-  'TTTTTTTTTTTTTTTT:TTTTTTTTTTT',
+  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  'TTT............................S::...........................TTT',
+  'TTT.............................::...........................TTT',
+  'TTT.....,,,,,,,,,,,.TT..........::..,,,,,,,,,,.TT.........T..TTT',
+  'TTT.....,,,,,,,,,,,.T.,,,,,,,,..::..,,,,,,,,,,............T..TTT',
+  'TTT.....,,,,,,,,,,,...,,,,,,,,..::..,,,,,,,,,,...,,,,,,,,,...TTT',
+  'TTT.....,,,,,,,,,,,...,,,,,,,,..::..,,,,,,,,,,...,,,,,,,,,...TTT',
+  'TTT.....,,,,,,,,,,,...,,,,,,,,..::..,,,,,,,,,,...,,,,,,,,,...TTT',
+  'TTT.....,,,,,,,,,,,...,,,,,,,,..::..,,,,,,,,,,...,,,,,,,,,...TTT',
+  'TTT...................,,,,,,,,..::...............,,,,,,,,,...TTT',
+  'TTT.....TT......................::.TT............,,,,,,,,,...TTT',
+  'TTT.........,,,,,,,,,,,,,.....TT::......,,,,,,,,,,,,,,,,,,...TTT',
+  'TTT.........,,,,,,,,,,,,,.TT....::......,,,,,,,,,,,..........TTT',
+  'TTT.........,,,,,,,,,,,,,.......::......,,,,,,,,,,,..........TTT',
+  'TTT.........,,,,,,,,,,,,,.......::......,,,,,,,,,,,..........TTT',
+  'TTT.............................::...........................TTT',
+  'TTT.............................::...........................TTT',
+  'TTT...:::::::::::::::::::::::::::::::::::::::::::::::::::::..TTT',
+  'TTT...:::::::::::::::::::::::::::::::::::::::::::::::::::::..TTT',
+  'TTT.....S.......................::....::.....................TTT',
+  'TTTTTT..TTTTTTTTTTTTT...........::...S::....f...f...f...f....TTT',
+  'TTTTTT..TTTTTTTTTTTTT...........::......f...WWWWWWWWWWWW.....TTT',
+  'TTTTTT..TTTTTTTTTTTTT...........::.........WWWWWWWWWWWWWW....TTT',
+  'TTTTTT..TTTTTTTTTTTTT...........::........WWWWWWWWWWWWWWWW...TTT',
+  'TTTTTT..........fffTT...........::.......fWWWWWWWWWWWWWWWW...TTT',
+  'TTTTTT...,,,,,..fffTT...........::........WWWWWWWWWWWWWWWW...TTT',
+  'TTTTTT...,,,,,.....TT...........::........WWWWWWWWWWWWWWWW...TTT',
+  'TTTTTT...,,,,,.....TT...........::......f.WWWWWWWWWWWWWWWW...TTT',
+  'TTTTTT...,,,,,.....TT...........::........WWWWWWWWWWWWWWWW...TTT',
+  'TTTTTT........,,,,.TT...........::........WWWWWWWWWWWWWWWW...TTT',
+  'TTTTTT........,,,,.TT...........::.......fWWWWWWWWWWWWWWWW...TTT',
+  'TTTTTT........,,,,.TT...........::.........WWWWWWWWWWWWWW....TTT',
+  'TTTTTT........,,,,.TT...........::..........WWWWWWWWWWWW.....TTT',
+  'TTTTTT.............TT...........::..RRRRRR..f.....f....f.....TTT',
+  'TTTTTT..TTTTTTTTTTTTT......f....::..RRRRRR........,,,,,,,....TTT',
+  'TTTTTT..TTTTTTTTTTTTT.RRRR....f.::..RRRRRR..RRRR..,,,,,,,....TTT',
+  'TTTTTT..TTTTTTTTTTTTT.RRRR......::..BBBBBB..RRRR.............TTT',
+  'TTTT,,..TTTTTTTTTTTTT.BBBB......::..BBDBBB..BBBB......,,,,,..TTT',
+  'TTTT,,..TTTTTTTTTTTTT.BdBB......::..........BdBB......,,,,,..TTT',
+  'TTT...::::::::::::::::::::::::::::S::::::::::::..............TTT',
+  'TTT...:::::::::::::::::::::::::::::::::::::::::...f..........TTT',
+  'TTT.....,,,,,,,.......f.....f...::.......f....f.....f........TTT',
+  'TTT.....,,,,,,,........f.......f::..f.......f.....,,,,,,,,,..TTT',
+  'TTT.....,,,,,,,.................::................,,,,,,,,,..TTT',
+  'TTT..........................................................TTT',
+  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
 ];
 
 const GYM_GRID = [
@@ -110,24 +136,26 @@ const GYM_GRID = [
 export const MAPS: Record<string, MapDefinition> = {
   overworld: {
     key: 'overworld',
-    name: 'Meadow Town & Sumwood Trail',
+    name: 'Meadow Town',
     grid: OVERWORLD_GRID,
-    areaId: 'sumwoodTrail',
+    areaId: 'meadowTown',
+    // North fields, the woods, and the lake use the trail's tougher wild table;
+    // the grass around town stays beginner-friendly.
+    zones: [{ y1: 0, y2: 35, areaId: 'sumwoodTrail' }],
     warps: {
-      // The right house in town is the Addition Gym.
-      '18,19': { mapKey: 'gym', tileX: 5, tileY: 8, facing: 'up' },
+      '38,38': { mapKey: 'gym', tileX: 5, tileY: 8, facing: 'up' },
     },
     npcs: [
       {
         id: 'npc-mira',
         name: 'Mira',
         spriteKey: 'npc-girl',
-        tileX: 10,
-        tileY: 21,
+        tileX: 30,
+        tileY: 41,
         facing: 'down',
         dialog: [
           'Welcome to Meadow Town!',
-          'Wild MathMon hide in the tall grass up north.',
+          'Sumwood Trail is up north, Whispering Woods is out west, and Lake Lumen sparkles to the east.',
           'Answer math facts quickly and your creature hits harder!',
         ],
       },
@@ -135,10 +163,10 @@ export const MAPS: Record<string, MapDefinition> = {
         id: 'trainer-finn',
         name: 'Trainer Finn',
         spriteKey: 'npc-boy',
-        tileX: 13,
-        tileY: 8,
+        tileX: 32,
+        tileY: 9,
         facing: 'down',
-        dialog: ['Hey! My Thistletot and I train here every day!'],
+        dialog: ['Hey! My Thistletot and I train on Sumwood Trail every day!'],
         battle: {
           type: 'trainer',
           speciesId: 'thistletot',
@@ -147,14 +175,56 @@ export const MAPS: Record<string, MapDefinition> = {
           introText: 'Trainer Finn challenges you!',
           defeatedDialog: [
             'Whoa, your math is quick!',
-            'The Addition Gym is the right-hand building in town. Go for it!',
+            'The Addition Gym is the blue-doored building in town. Go for it!',
+          ],
+        },
+      },
+      {
+        id: 'trainer-maya',
+        name: 'Trainer Maya',
+        spriteKey: 'npc-girl',
+        tileX: 41,
+        tileY: 24,
+        facing: 'down',
+        dialog: ['I love watching Fluffinch skim across Lake Lumen!'],
+        battle: {
+          type: 'trainer',
+          speciesId: 'fluffinch',
+          enemyHp: 58,
+          enemyLevel: 4,
+          introText: 'Trainer Maya challenges you!',
+          defeatedDialog: [
+            'Splash! You sank me fair and square.',
+            'The lakeside grass hides speedy wild MathMon. Good hunting!',
+          ],
+        },
+      },
+      {
+        id: 'trainer-theo',
+        name: 'Trainer Theo',
+        spriteKey: 'npc-boy',
+        tileX: 10,
+        tileY: 32,
+        facing: 'down',
+        dialog: ['Shhh... Buzzlet and I are listening to the woods.'],
+        battle: {
+          type: 'trainer',
+          speciesId: 'buzzlet',
+          enemyHp: 62,
+          enemyLevel: 4,
+          introText: 'Trainer Theo challenges you!',
+          defeatedDialog: [
+            'Zap! Out-counted in my own woods.',
+            'You might be ready for Gym Leader Ada back in town.',
           ],
         },
       },
     ],
     signs: [
-      { tileX: 8, tileY: 9, text: 'SUMWOOD TRAIL - Tall grass ahead! Wild MathMon love hiding here.' },
-      { tileX: 17, tileY: 22, text: 'MEADOW TOWN - A friendly place to start an adventure. Gym on the right!' },
+      { tileX: 31, tileY: 2, text: 'NORTH GATE - Minus Marsh is under construction. Come back soon!' },
+      { tileX: 8, tileY: 20, text: 'WHISPERING WOODS - Shady paths, rustling grass, and one very quiet trainer.' },
+      { tileX: 37, tileY: 21, text: 'LAKE LUMEN - No swimming until you know your facts!' },
+      { tileX: 34, tileY: 40, text: 'MEADOW TOWN - A friendly place to start an adventure. Gym door is the blue one!' },
     ],
     musicTrack: 'overworld',
   },
@@ -164,8 +234,8 @@ export const MAPS: Record<string, MapDefinition> = {
     grid: GYM_GRID,
     areaId: 'meadowTown',
     warps: {
-      '5,9': { mapKey: 'overworld', tileX: 18, tileY: 20, facing: 'down' },
-      '6,9': { mapKey: 'overworld', tileX: 18, tileY: 20, facing: 'down' },
+      '5,9': { mapKey: 'overworld', tileX: 38, tileY: 39, facing: 'down' },
+      '6,9': { mapKey: 'overworld', tileX: 38, tileY: 39, facing: 'down' },
     },
     npcs: [
       {

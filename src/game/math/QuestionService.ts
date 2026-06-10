@@ -5,6 +5,11 @@ import type { QuestionHistoryEntry } from '../save/saveTypes';
 import type { QuestionRepository } from './QuestionRepository';
 import type { MathQuestion, QuestionResult } from './types';
 
+/** How many recently served questions are barred from re-selection. */
+const RECENT_QUESTION_MEMORY = 8;
+/** How many recent answers are penalized to avoid same-answer streaks. */
+const RECENT_ANSWER_MEMORY = 3;
+
 /**
  * Adaptive question selector. Serves questions ONLY from the student's
  * current unlocked level, with weighted-random selection that:
@@ -12,10 +17,14 @@ import type { MathQuestion, QuestionResult } from './types';
  *  - prefers facts answered slowly,
  *  - occasionally re-serves mastered facts for confidence,
  *  - favors easier facts (within the tier) when the student is struggling,
- *  - never repeats the same question back to back.
+ *  - leans into harder facts when the student is cruising,
+ *  - enforces variety: no recent repeats, no same-answer streaks, no
+ *    same-fact-family streaks, and trivial zero-facts are kept rare.
  */
 export class QuestionService {
-  private lastQuestionId: string | null = null;
+  private recentQuestionIds: string[] = [];
+  private recentAnswers: number[] = [];
+  private lastFactFamily: string | null = null;
 
   constructor(
     private readonly repo: QuestionRepository,
@@ -33,12 +42,21 @@ export class QuestionService {
     const history = this.save.requireData().questionHistory;
     const struggling = this.progression.isStruggling(level.levelNumber);
 
-    const candidates = pool.filter((q) => q.id !== this.lastQuestionId);
+    // Hard-exclude anything served in the last few questions (window is
+    // capped to half the pool so tiny pools still work).
+    const barWindow = Math.min(RECENT_QUESTION_MEMORY, Math.floor(pool.length / 2));
+    const barred = new Set(this.recentQuestionIds.slice(-barWindow));
+    const candidates = pool.filter((q) => !barred.has(q.id));
     const usable = candidates.length > 0 ? candidates : pool;
 
     const weights = usable.map((q) => this.weightFor(q, history[q.id], struggling));
     const picked = weightedPick(usable, weights);
-    this.lastQuestionId = picked.id;
+
+    this.recentQuestionIds.push(picked.id);
+    if (this.recentQuestionIds.length > RECENT_QUESTION_MEMORY) this.recentQuestionIds.shift();
+    this.recentAnswers.push(picked.answer);
+    if (this.recentAnswers.length > RECENT_ANSWER_MEMORY) this.recentAnswers.shift();
+    this.lastFactFamily = picked.factFamily;
     return picked;
   }
 
@@ -65,9 +83,18 @@ export class QuestionService {
       }
     }
 
-    // Struggle support: bias toward lighter facts in the SAME tier.
+    // Variety: avoid serving the same answer or fact family in a row.
+    if (this.recentAnswers.includes(q.answer)) weight *= 0.2;
+    if (q.factFamily === this.lastFactFamily) weight *= 0.4;
+    // Zero-facts (x+0, x-0, x*0...) are a third of some pools — keep them rare.
+    if (q.tags.includes('zero-fact')) weight *= 0.3;
+
     if (struggling) {
+      // Struggle support: bias toward lighter facts in the SAME tier.
       weight *= 1 / Math.max(1, q.difficultyWeight);
+    } else {
+      // Cruising: lean into the meatier facts so the tier stays challenging.
+      weight *= 1 + (q.difficultyWeight - 1) * 0.4;
     }
 
     return weight;

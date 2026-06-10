@@ -11,6 +11,9 @@ export const worldConfig = {
   /** Grid step duration in ms (classic GBA walking pace). */
   stepDurationMs: 190,
 
+  /** Where new games start and where the player respawns after a loss. */
+  spawn: { mapKey: 'overworld', tileX: 33, tileY: 42, facing: 'down' as const },
+
   encounters: {
     /** Chance per tall-grass step of triggering a wild battle. */
     chancePerStep: 0.12,

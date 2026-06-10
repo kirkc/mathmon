@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { battleConfig, type BattleType } from '../../config/battleConfig';
 import { worldConfig } from '../../config/worldConfig';
 import { chiptune } from '../audio/ChiptunePlayer';
-import { BattleEngine } from '../battle/BattleEngine';
+import { BattleEngine, type TurnResolution } from '../battle/BattleEngine';
 import { CREATURE_SPECIES } from '../data/creatures';
 import type { MathQuestion } from '../math/types';
 import { ProgressionService } from '../progression/ProgressionService';
@@ -103,36 +103,38 @@ export class BattleScene extends Phaser.Scene {
     // backdrop
     this.add.rectangle(0, 0, W, H, 0x9adcf0).setOrigin(0);
     this.add.rectangle(0, H * 0.55, W, H * 0.45, 0x86c860).setOrigin(0);
-    this.add.ellipse(W - 120, 128, 150, 36, 0x74b850); // enemy ground pad
-    this.add.ellipse(110, 218, 160, 40, 0x74b850); // player ground pad
+    this.add.ellipse(W - 110, 176, 140, 32, 0x74b850); // enemy ground pad
+    this.add.ellipse(115, 250, 150, 34, 0x74b850); // player ground pad
 
+    // Sprites are 16 art px at 2x texture scale, so display size is
+    // 16 * 2 * scale — keep panels clear of those bounds.
     const enemySpecies = CREATURE_SPECIES[this.payload.enemy.speciesId];
-    this.enemySprite = this.add.image(W - 120, 96, enemySpecies.spriteKey).setScale(5);
+    this.enemySprite = this.add.image(W - 110, 120, enemySpecies.spriteKey).setScale(4);
     const playerSpecies = CREATURE_SPECIES[this.playerCreature.speciesId];
-    this.playerSprite = this.add.image(110, 182, playerSpecies.spriteKey).setScale(6).setFlipX(true);
+    this.playerSprite = this.add.image(115, 205, playerSpecies.spriteKey).setScale(5).setFlipX(true);
 
-    // enemy info panel (top-left)
-    this.buildPanel(10, 10, 190, 44);
-    this.add.text(18, 16, this.enemyDisplayName(), { fontFamily: MONO, fontSize: '11px', color: '#26203a' });
-    this.add.rectangle(18, 34, 150, 8, 0xd0d0c0).setOrigin(0);
-    this.enemyHpBar = this.add.rectangle(18, 34, 150, 8, 0x3f9c4e).setOrigin(0);
-    this.enemyHpText = this.add.text(18, 44, '', { fontFamily: MONO, fontSize: '9px', color: '#26203a' });
+    // Each creature's info panel sits on ITS side: enemy top-right above the
+    // enemy, player mid-left above the player.
+    this.buildPanel(W - 200, 8, 190, 44);
+    this.add.text(W - 192, 14, this.enemyDisplayName(), { fontFamily: MONO, fontSize: '11px', color: '#26203a' });
+    this.add.rectangle(W - 192, 32, 150, 8, 0xd0d0c0).setOrigin(0);
+    this.enemyHpBar = this.add.rectangle(W - 192, 32, 150, 8, 0x3f9c4e).setOrigin(0);
+    this.enemyHpText = this.add.text(W - 192, 42, '', { fontFamily: MONO, fontSize: '9px', color: '#26203a' });
 
-    // player info panel (mid-right)
-    this.buildPanel(W - 200, 150, 190, 50);
-    this.add.text(W - 192, 156, `${playerSpecies.name} Lv.${this.playerCreature.level}`, {
+    this.buildPanel(10, 70, 190, 50);
+    this.add.text(18, 76, `${playerSpecies.name} Lv.${this.playerCreature.level}`, {
       fontFamily: MONO,
       fontSize: '11px',
       color: '#26203a',
     });
-    this.add.rectangle(W - 192, 174, 150, 8, 0xd0d0c0).setOrigin(0);
-    this.playerHpBar = this.add.rectangle(W - 192, 174, 150, 8, 0x3f9c4e).setOrigin(0);
-    this.playerHpText = this.add.text(W - 192, 184, '', { fontFamily: MONO, fontSize: '9px', color: '#26203a' });
+    this.add.rectangle(18, 94, 150, 8, 0xd0d0c0).setOrigin(0);
+    this.playerHpBar = this.add.rectangle(18, 94, 150, 8, 0x3f9c4e).setOrigin(0);
+    this.playerHpText = this.add.text(18, 104, '', { fontFamily: MONO, fontSize: '9px', color: '#26203a' });
 
-    // progress counter
+    // progress counter (top-left, away from the enemy panel)
     this.progressText = this.add
-      .text(W - 10, 12, '', { fontFamily: MONO, fontSize: '11px', color: '#26203a', backgroundColor: '#f8f8f0', padding: { x: 6, y: 2 } })
-      .setOrigin(1, 0);
+      .text(10, 12, '', { fontFamily: MONO, fontSize: '11px', color: '#26203a', backgroundColor: '#f8f8f0', padding: { x: 6, y: 2 } })
+      .setOrigin(0, 0);
 
     // timer bar
     this.timerBarBg = this.add.rectangle(20, 206, W - 40, 6, 0x26203a).setOrigin(0).setVisible(false);
@@ -161,12 +163,16 @@ export class BattleScene extends Phaser.Scene {
     this.add.rectangle(x, y, w, h, 0xf8f8f0).setOrigin(0).setStrokeStyle(3, 0x3a4a8c);
   }
 
-  private refreshHpBars(): void {
+  private refreshHpBars(animate = false): void {
     const setBar = (bar: Phaser.GameObjects.Rectangle, text: Phaser.GameObjects.Text, hp: number, max: number) => {
       const pct = Math.max(0, hp / max);
-      bar.width = 150 * pct;
       bar.fillColor = pct > 0.5 ? 0x3f9c4e : pct > 0.25 ? 0xf8d048 : 0xc83a3a;
       text.setText(`HP ${hp}/${max}`);
+      if (animate) {
+        this.tweens.add({ targets: bar, width: 150 * pct, duration: 350, ease: 'Cubic.easeOut' });
+      } else {
+        bar.width = 150 * pct;
+      }
     };
     setBar(this.enemyHpBar, this.enemyHpText, this.engine.enemy.currentHp, this.engine.enemy.maxHp);
     setBar(this.playerHpBar, this.playerHpText, this.engine.player.currentHp, this.engine.player.maxHp);
@@ -182,7 +188,8 @@ export class BattleScene extends Phaser.Scene {
 
     this.messageText.setText('');
     this.promptText.setText(`${this.question.prompt} = ?`).setVisible(true);
-    this.answerText.setText('_').setVisible(true);
+    this.answerText.setVisible(true).setColor('#3a6ac8');
+    this.renderInput();
     this.progressText.setText(`Question ${this.engine.questionsAsked + 1} of ${this.engine.questionsTotal}`);
     this.timerBarBg.setVisible(true);
     this.timerBar.setVisible(true).setFillStyle(0x3f9c4e);
@@ -221,24 +228,35 @@ export class BattleScene extends Phaser.Scene {
     if (this.phase !== 'question' && this.phase !== 'remediate') return;
 
     const digit = digitFrom(event);
-    if (digit !== null && this.input$.length < 4) {
+    if (digit !== null && this.input$.length < this.answerLength()) {
       this.input$ += digit;
       this.renderInput();
-      if (this.phase === 'remediate') this.checkRemediationInput();
+      if (this.phase === 'question') {
+        // Auto-submit on the final digit — no ENTER needed, so the timer
+        // measures pure answer speed.
+        if (this.input$.length === this.answerLength()) this.submitAnswer();
+      } else {
+        this.checkRemediationInput();
+      }
       return;
     }
     if (event.code === 'Backspace') {
       this.input$ = this.input$.slice(0, -1);
       this.renderInput();
-      return;
-    }
-    if ((event.code === 'Enter' || event.code === 'NumpadEnter') && this.phase === 'question') {
-      this.submitAnswer();
     }
   }
 
+  /** Digit count of the expected answer (the answer box shows one blank per digit). */
+  private answerLength(): number {
+    return this.question ? String(this.question.answer).length : 1;
+  }
+
   private renderInput(): void {
-    this.answerText.setText(this.input$.length > 0 ? this.input$ : '_');
+    const blanks: string[] = [];
+    for (let i = 0; i < this.answerLength(); i++) {
+      blanks.push(this.input$[i] ?? '_');
+    }
+    this.answerText.setText(blanks.join(' '));
   }
 
   private submitAnswer(): void {
@@ -291,7 +309,19 @@ export class BattleScene extends Phaser.Scene {
     if (!this.question) return;
     if (parseInt(this.input$, 10) === this.question.answer) {
       chiptune.playSfx('correct');
+      this.answerText.setColor('#3f9c4e');
       this.time.delayedCall(250, () => this.finishRemediation());
+    } else if (this.input$.length >= this.answerLength()) {
+      // Full but wrong: flash red and clear so the student can retry
+      // without needing to know about Backspace.
+      this.answerText.setColor('#c83a3a');
+      this.time.delayedCall(350, () => {
+        if (this.phase === 'remediate') {
+          this.input$ = '';
+          this.answerText.setColor('#3a6ac8');
+          this.renderInput();
+        }
+      });
     }
   }
 
@@ -327,26 +357,131 @@ export class BattleScene extends Phaser.Scene {
     const seconds = (responseMs / 1000).toFixed(1);
     const lines: string[] = [turn.feedback];
     if (result.correct) lines.push(`Answered in ${seconds}s.`);
-    if (turn.playerHit) lines.push(`${this.engine.player.name} dealt ${turn.playerDamage} damage!`);
-    else if (result.correct) lines.push('');
-    if (turn.enemyHit) lines.push(`${this.engine.enemy.name} hit back for ${turn.enemyDamage}.`);
-    else if (!turn.battleOver) lines.push(`${this.engine.enemy.name}'s attack missed!`);
-    this.messageText.setText(lines.filter(Boolean).join('\n'));
+    this.messageText.setText(lines.join('\n'));
 
-    // hit animations
-    if (turn.playerHit) this.flashSprite(this.enemySprite);
-    if (turn.enemyHit) this.flashSprite(this.playerSprite);
-    this.refreshHpBars();
-
-    this.time.delayedCall(1600, () => {
-      if (turn.battleOver) this.endBattle(turn.playerWon === true);
-      else this.askNextQuestion();
+    this.playTurnAnimation(turn, () => {
+      this.time.delayedCall(450, () => {
+        if (turn.battleOver) this.endBattle(turn.playerWon === true);
+        else this.askNextQuestion();
+      });
     });
   }
 
-  private flashSprite(sprite: Phaser.GameObjects.Image): void {
-    this.tweens.add({ targets: sprite, alpha: 0.2, duration: 90, yoyo: true, repeat: 2 });
-    this.tweens.add({ targets: sprite, x: sprite.x + 6, duration: 60, yoyo: true, repeat: 3 });
+  // ----------------------------------------------------- attack animation
+
+  /** Player attack -> enemy counter, with lunges, impacts, and damage popups. */
+  private playTurnAnimation(turn: TurnResolution, onDone: () => void): void {
+    this.animateAttack(this.playerSprite, this.enemySprite, 1, turn.playerHit, turn.playerDamage, () => {
+      this.refreshHpBars(true);
+      if (turn.enemyHpAfter === 0) {
+        this.animateFaint(this.enemySprite, onDone);
+        return;
+      }
+      // Enemy counterattacks unless it fainted.
+      this.time.delayedCall(280, () => {
+        this.animateAttack(this.enemySprite, this.playerSprite, -1, turn.enemyHit, turn.enemyDamage, () => {
+          this.refreshHpBars(true);
+          if (turn.playerHpAfter === 0) this.animateFaint(this.playerSprite, onDone);
+          else onDone();
+        });
+      });
+    });
+  }
+
+  private animateAttack(
+    attacker: Phaser.GameObjects.Image,
+    defender: Phaser.GameObjects.Image,
+    dir: 1 | -1,
+    hit: boolean,
+    damage: number,
+    onDone: () => void,
+  ): void {
+    const homeX = attacker.x;
+    this.tweens.add({
+      targets: attacker,
+      x: homeX + dir * 38,
+      duration: 140,
+      yoyo: true,
+      ease: 'Quad.easeIn',
+      onYoyo: () => {
+        if (hit) {
+          this.impactBurst(defender.x, defender.y);
+          this.damagePopup(defender.x, defender.y - 44, `-${damage}`, '#c83a3a');
+          this.tweens.add({ targets: defender, x: defender.x + dir * 8, duration: 55, yoyo: true, repeat: 3 });
+          this.tweens.add({ targets: defender, alpha: 0.25, duration: 80, yoyo: true, repeat: 2 });
+        } else {
+          // Defender sidesteps the whiffed attack.
+          this.damagePopup(defender.x, defender.y - 44, 'MISS!', '#6d7689');
+          this.tweens.add({ targets: defender, x: defender.x + dir * 22, duration: 110, yoyo: true, ease: 'Quad.easeOut' });
+        }
+      },
+      onComplete: () => {
+        attacker.x = homeX;
+        this.time.delayedCall(420, onDone);
+      },
+    });
+  }
+
+  /** Radiating spark burst at the point of impact. */
+  private impactBurst(x: number, y: number): void {
+    const flash = this.add.circle(x, y, 6, 0xffffff).setDepth(50);
+    this.tweens.add({
+      targets: flash,
+      scale: 4,
+      alpha: 0,
+      duration: 220,
+      onComplete: () => flash.destroy(),
+    });
+    for (let i = 0; i < 6; i++) {
+      const angle = (i / 6) * Math.PI * 2;
+      const spark = this.add.rectangle(x, y, 5, 5, 0xf8d048).setDepth(50);
+      this.tweens.add({
+        targets: spark,
+        x: x + Math.cos(angle) * 34,
+        y: y + Math.sin(angle) * 34,
+        alpha: 0,
+        scale: 0.4,
+        duration: 280,
+        ease: 'Quad.easeOut',
+        onComplete: () => spark.destroy(),
+      });
+    }
+  }
+
+  /** Floating combat number ("-14" / "MISS!"). */
+  private damagePopup(x: number, y: number, label: string, color: string): void {
+    const text = this.add
+      .text(x, y, label, {
+        fontFamily: MONO,
+        fontSize: '18px',
+        fontStyle: 'bold',
+        color,
+        stroke: '#f8f8f0',
+        strokeThickness: 4,
+      })
+      .setOrigin(0.5)
+      .setDepth(60);
+    this.tweens.add({
+      targets: text,
+      y: y - 30,
+      alpha: 0,
+      duration: 750,
+      ease: 'Quad.easeOut',
+      onComplete: () => text.destroy(),
+    });
+  }
+
+  /** Defeated creature sinks and fades. */
+  private animateFaint(sprite: Phaser.GameObjects.Image, onDone: () => void): void {
+    this.tweens.add({
+      targets: sprite,
+      y: sprite.y + 26,
+      alpha: 0,
+      angle: sprite === this.playerSprite ? -14 : 14,
+      duration: 480,
+      ease: 'Quad.easeIn',
+      onComplete: () => this.time.delayedCall(250, onDone),
+    });
   }
 
   // ----------------------------------------------------------------- end
@@ -402,10 +537,10 @@ export class BattleScene extends Phaser.Scene {
     if (!won) {
       // Send the player home to rest, fully healed (handled in finishBattle).
       const save = saveService.requireData();
-      save.player.mapKey = 'overworld';
-      save.player.tileX = 13;
-      save.player.tileY = 21;
-      save.player.facing = 'down';
+      save.player.mapKey = worldConfig.spawn.mapKey;
+      save.player.tileX = worldConfig.spawn.tileX;
+      save.player.tileY = worldConfig.spawn.tileY;
+      save.player.facing = worldConfig.spawn.facing;
       saveService.persist();
     }
   }

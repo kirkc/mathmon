@@ -1,3 +1,4 @@
+import { worldConfig } from '../../config/worldConfig';
 import type { SaveData } from './saveTypes';
 
 /**
@@ -71,10 +72,10 @@ export class SaveService {
       player: {
         name: playerName,
         coins: 0,
-        mapKey: 'overworld',
-        tileX: 13,
-        tileY: 21,
-        facing: 'down',
+        mapKey: worldConfig.spawn.mapKey,
+        tileX: worldConfig.spawn.tileX,
+        tileY: worldConfig.spawn.tileY,
+        facing: worldConfig.spawn.facing,
       },
       party: [],
       progression: {

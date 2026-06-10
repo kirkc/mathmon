@@ -21,9 +21,8 @@ npm run build    # typecheck + production build to dist/
 | --- | --- |
 | Arrow keys / WASD | Move |
 | Enter / Space | Interact, advance dialog, confirm |
-| 0–9 | Type answer during battle |
+| 0–9 | Type answer (auto-submits on the last digit — no Enter needed) |
 | Backspace | Delete digit |
-| Enter | Submit answer |
 | P | Parent dashboard |
 | G | Math glossary |
 | M | Mute music |
@@ -87,10 +86,12 @@ Two seams are built for the future database:
 
 ## Milestone 1 (this build)
 
-Title screen, starter pick, Meadow Town + Sumwood Trail map, tall-grass wild
-battles, Trainer Finn, the Addition Gym with Leader Ada, full timing-based
-battle system, adaptive progression with plateau, localStorage saves, parent
-dashboard, math glossary, original chiptune music.
+Title screen, starter pick, and a 64x48 connected overworld: Meadow Town,
+Sumwood Trail (north fields), Whispering Woods (west), and Lake Lumen (east),
+with three trainers (Finn, Maya, Theo) plus the Addition Gym with Leader Ada.
+Full timing-based battle system with attack animations and damage popups,
+adaptive progression with plateau, localStorage saves, parent dashboard, math
+glossary, original chiptune music.
 
 ## TODO — Milestone 2+
 
