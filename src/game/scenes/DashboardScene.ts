@@ -29,6 +29,11 @@ export class DashboardScene extends Phaser.Scene {
       .text(W / 2, 12, 'PARENT DASHBOARD', { fontFamily: FONT_HEADING, fontSize: '13px', color: '#f8d048' })
       .setOrigin(0.5, 0);
 
+    // From the title screen no slot is loaded yet — show the most recent.
+    if (!saveService.getData()) {
+      const recent = saveService.mostRecentSlot();
+      if (recent) saveService.loadSlot(recent);
+    }
     const save = saveService.getData();
     if (!save) {
       this.add

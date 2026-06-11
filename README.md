@@ -23,6 +23,7 @@ npm run build    # typecheck + production build to dist/
 | Enter / Space | Interact, advance dialog, confirm |
 | 0–9 | Type answer (auto-submits on the last digit — no Enter needed) |
 | Backspace | Delete digit |
+| Esc | Pause menu (resume, how to play, controls, main menu) |
 | P | Parent dashboard |
 | G | Math glossary |
 | M | Mute music |
@@ -83,6 +84,15 @@ src/
 Two seams are built for the future database:
 - `QuestionRepository` interface — replace `JsonQuestionRepository`.
 - `SaveBackend` interface — replace `LocalStorageBackend`.
+
+## Saves
+
+Four local save slots (great for siblings). Each new game asks for the
+player's name and an open slot; the slot list shows the name, partner
+creature, current math focus, and last-saved time. The game auto-saves
+after every battle, so progress is never lost. Saves from versions before
+slots existed are migrated into Slot 1 automatically. Delete a save from
+the Continue screen with X.
 
 ## Milestone 1 (this build)
 

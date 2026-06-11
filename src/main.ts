@@ -6,6 +6,7 @@ import { DashboardScene } from './game/scenes/DashboardScene';
 import { GlossaryScene } from './game/scenes/GlossaryScene';
 import { OverworldScene } from './game/scenes/OverworldScene';
 import { PreloadScene } from './game/scenes/PreloadScene';
+import { SaveSlotScene } from './game/scenes/SaveSlotScene';
 import { TitleScene } from './game/scenes/TitleScene';
 
 const game = new Phaser.Game({
@@ -16,7 +17,7 @@ const game = new Phaser.Game({
   zoom: 2,
   pixelArt: true,
   backgroundColor: '#1a1424',
-  scene: [BootScene, PreloadScene, TitleScene, OverworldScene, BattleScene, DashboardScene, GlossaryScene],
+  scene: [BootScene, PreloadScene, TitleScene, SaveSlotScene, OverworldScene, BattleScene, DashboardScene, GlossaryScene],
 });
 
 // Exposed for debugging and automated playtesting only.

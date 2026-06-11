@@ -8,7 +8,7 @@ import { ENCOUNTER_TILES, MAPS, SOLID_TILES, type MapDefinition, type NpcDefinit
 import { creatureService } from '../entities/CreatureService';
 import { startTileAnimations, TILE_TEXTURES } from '../gfx/textureFactory';
 import { progressionService, saveService } from '../services';
-import { FONT_BODY } from '../ui/fonts';
+import { FONT_BODY, FONT_HEADING } from '../ui/fonts';
 import { DialogBox } from '../ui/DialogBox';
 import type { BattlePayload } from './BattleScene';
 
@@ -28,7 +28,10 @@ export class OverworldScene extends Phaser.Scene {
   private moving = false;
   private stepFrame = 0;
   private dialog!: DialogBox;
-  private hudText!: Phaser.GameObjects.Text;
+  private paused = false;
+  private pauseIndex = 0;
+  private pausePage: 'menu' | 'help' | 'controls' = 'menu';
+  private pauseUi: Phaser.GameObjects.Container | null = null;
   private npcSprites = new Map<string, Phaser.GameObjects.Image>();
   private keys!: Record<string, Phaser.Input.Keyboard.Key>;
   private pendingBattleNpc: NpcDefinition | null = null;
@@ -73,12 +76,8 @@ export class OverworldScene extends Phaser.Scene {
     this.cameras.main.startFollow(this.player, true);
 
     this.dialog = new DialogBox(this);
-
-    this.hudText = this.add
-      .text(8, 6, '', { fontFamily: FONT_BODY, fontSize: '15px', color: '#ffffff', backgroundColor: '#26203acc', padding: { x: 6, y: 4 }, lineSpacing: -2 })
-      .setScrollFactor(0)
-      .setDepth(900);
-    this.refreshHud();
+    this.paused = false;
+    this.pauseUi = null;
 
     const kb = this.input.keyboard!;
     this.keys = {
@@ -126,7 +125,7 @@ export class OverworldScene extends Phaser.Scene {
   }
 
   update(): void {
-    if (this.dialog.isOpen || this.moving) return;
+    if (this.paused || this.dialog.isOpen || this.moving) return;
 
     let dir: Facing | null = null;
     if (this.keys.up.isDown || this.keys.w.isDown) dir = 'up';
@@ -140,6 +139,11 @@ export class OverworldScene extends Phaser.Scene {
   private handleKeyDown(event: KeyboardEvent): void {
     chiptune.unlock();
     chiptune.playMusic(this.map.musicTrack);
+
+    if (this.paused) {
+      this.handlePauseKey(event);
+      return;
+    }
 
     if (this.dialog.isOpen) {
       if (matchesControl(event.code, controlsConfig.interact)) {
@@ -155,6 +159,8 @@ export class OverworldScene extends Phaser.Scene {
 
     if (matchesControl(event.code, controlsConfig.interact)) {
       this.interact();
+    } else if (matchesControl(event.code, controlsConfig.cancel)) {
+      this.openPause();
     } else if (matchesControl(event.code, controlsConfig.dashboard)) {
       this.persistPosition();
       this.scene.start('DashboardScene', { from: 'OverworldScene' });
@@ -164,6 +170,177 @@ export class OverworldScene extends Phaser.Scene {
     } else if (event.code === 'KeyM') {
       chiptune.toggleMute();
     }
+  }
+
+  // ---------------------------------------------------------- pause menu
+
+  private openPause(): void {
+    this.paused = true;
+    this.pauseIndex = 0;
+    this.pausePage = 'menu';
+    chiptune.playSfx('select');
+    this.renderPauseUi();
+  }
+
+  private closePause(): void {
+    this.paused = false;
+    this.pauseUi?.destroy();
+    this.pauseUi = null;
+  }
+
+  private handlePauseKey(event: KeyboardEvent): void {
+    if (this.pausePage !== 'menu') {
+      if (
+        matchesControl(event.code, controlsConfig.cancel) ||
+        matchesControl(event.code, controlsConfig.interact)
+      ) {
+        this.pausePage = 'menu';
+        this.renderPauseUi();
+      }
+      return;
+    }
+
+    const items = this.pauseMenuItems();
+    if (matchesControl(event.code, controlsConfig.cancel)) {
+      this.closePause();
+    } else if (event.code === 'ArrowUp' || event.code === 'KeyW') {
+      this.pauseIndex = (this.pauseIndex + items.length - 1) % items.length;
+      chiptune.playSfx('select');
+      this.renderPauseUi();
+    } else if (event.code === 'ArrowDown' || event.code === 'KeyS') {
+      this.pauseIndex = (this.pauseIndex + 1) % items.length;
+      chiptune.playSfx('select');
+      this.renderPauseUi();
+    } else if (matchesControl(event.code, controlsConfig.interact)) {
+      this.selectPauseItem(items[this.pauseIndex]);
+    }
+  }
+
+  private pauseMenuItems(): string[] {
+    return ['Resume', 'How to Play', 'Controls', 'Main Menu'];
+  }
+
+  private selectPauseItem(item: string): void {
+    chiptune.playSfx('correct');
+    switch (item) {
+      case 'Resume':
+        this.closePause();
+        break;
+      case 'How to Play':
+        this.pausePage = 'help';
+        this.renderPauseUi();
+        break;
+      case 'Controls':
+        this.pausePage = 'controls';
+        this.renderPauseUi();
+        break;
+      case 'Main Menu':
+        this.persistPosition();
+        this.closePause();
+        this.scene.start('TitleScene');
+        break;
+    }
+  }
+
+  private renderPauseUi(): void {
+    this.pauseUi?.destroy();
+    const { gameWidth: GW, gameHeight: GH } = worldConfig;
+    const ui = this.add.container(0, 0).setScrollFactor(0).setDepth(1500);
+    this.pauseUi = ui;
+
+    ui.add(this.add.rectangle(0, 0, GW, GH, 0x1a1626, 0.72).setOrigin(0));
+
+    if (this.pausePage === 'menu') {
+      // Trainer info panel — the old corner HUD now lives here.
+      const save = saveService.requireData();
+      const level = progressionService.getCurrentLevel();
+      const lead = save.party[0];
+      const species = lead ? CREATURE_SPECIES[lead.speciesId] : null;
+      const info = [
+        `${save.player.name} · ${this.map.name}`,
+        species ? `Partner: ${species.name} Lv.${lead.level}` : 'No creature yet',
+        `Coins: ${save.player.coins} · Badges: ${save.badges.length}`,
+        `Practicing: ${level.levelName}`,
+      ].join('\n');
+      ui.add(this.add.rectangle(GW / 2, 70, 320, 84, 0x2c3a70).setStrokeStyle(3, 0x5468b8));
+      ui.add(
+        this.add
+          .text(GW / 2, 70, info, { fontFamily: FONT_BODY, fontSize: '16px', color: '#ffffff', align: 'center', lineSpacing: 0 })
+          .setOrigin(0.5),
+      );
+      if (species) {
+        ui.add(this.add.image(GW / 2 - 138, 70, species.spriteKey).setScale(2));
+      }
+
+      ui.add(
+        this.add
+          .text(GW / 2, 128, 'PAUSED', { fontFamily: FONT_HEADING, fontSize: '12px', color: '#f8d048' })
+          .setOrigin(0.5),
+      );
+      this.pauseMenuItems().forEach((item, i) => {
+        const active = i === this.pauseIndex;
+        ui.add(
+          this.add
+            .text(GW / 2, 156 + i * 24, `${active ? '▶ ' : '  '}${item}${active ? ' ◀' : '  '}`, {
+              fontFamily: FONT_BODY,
+              fontSize: '20px',
+              color: active ? '#f8d048' : '#ffffff',
+            })
+            .setOrigin(0.5),
+        );
+      });
+      ui.add(
+        this.add
+          .text(GW / 2, GH - 16, 'ESC resume · ENTER select', { fontFamily: FONT_BODY, fontSize: '14px', color: '#8a93a6' })
+          .setOrigin(0.5),
+      );
+      return;
+    }
+
+    const isHelp = this.pausePage === 'help';
+    ui.add(
+      this.add
+        .text(GW / 2, 28, isHelp ? 'HOW TO PLAY' : 'CONTROLS', {
+          fontFamily: FONT_HEADING,
+          fontSize: '13px',
+          color: '#f8d048',
+        })
+        .setOrigin(0.5),
+    );
+    const body = isHelp
+      ? [
+          'Explore the world! Wild MathMon hide in the swaying tall grass.',
+          '',
+          'Battles are math duels: answer facts to attack. The faster you answer, the harder your creature hits. Wrong or slow answers let the enemy strike back — but every battle makes you stronger.',
+          '',
+          'Talk to trainers to battle them, and challenge the Gym Leader in town to earn badges. Practice unlocks new math powers!',
+          '',
+          'Your game saves by itself after every battle.',
+        ].join('\n')
+      : [
+          'ARROWS / WASD ... move',
+          'ENTER / SPACE ... talk, confirm',
+          '0-9 ............ answer math questions',
+          'BACKSPACE ...... fix your answer',
+          'ESC ............ pause menu',
+          'P .............. parent dashboard',
+          'G .............. math glossary',
+          'M .............. mute music',
+        ].join('\n');
+    ui.add(
+      this.add.text(40, 52, body, {
+        fontFamily: FONT_BODY,
+        fontSize: '17px',
+        color: '#ffffff',
+        wordWrap: { width: GW - 80 },
+        lineSpacing: 0,
+      }),
+    );
+    ui.add(
+      this.add
+        .text(GW / 2, GH - 16, 'ESC or ENTER to go back', { fontFamily: FONT_BODY, fontSize: '14px', color: '#8a93a6' })
+        .setOrigin(0.5),
+    );
   }
 
   // ------------------------------------------------------------ movement
@@ -333,15 +510,5 @@ export class OverworldScene extends Phaser.Scene {
     saveService.persist();
   }
 
-  private refreshHud(): void {
-    const save = saveService.requireData();
-    const level = progressionService.getCurrentLevel();
-    const lead = save.party[0];
-    const species = lead ? CREATURE_SPECIES[lead.speciesId] : null;
-    const partyLine = lead && species ? `${species.name} Lv.${lead.level}` : 'No creature';
-    this.hudText.setText(
-      `${this.map.name}\n${partyLine} · ${save.player.coins} coins\nPracticing: ${level.levelName}\nENTER talk · P dashboard · G glossary · M mute`,
-    );
-  }
 }
 
