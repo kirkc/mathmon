@@ -37,6 +37,13 @@ export const worldConfig = {
       wildSpecies: ['pebblit', 'fluffinch', 'buzzlet'],
       wildHp: { min: 28, max: 38 },
     },
+    minusMarsh: {
+      id: 'minus-marsh',
+      name: 'Minus Marsh',
+      levelFocus: 3,
+      wildSpecies: ['croakle', 'wisplit', 'snailby'],
+      wildHp: { min: 32, max: 44 },
+    },
   },
 } as const;
 

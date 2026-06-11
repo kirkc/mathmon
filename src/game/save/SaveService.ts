@@ -126,6 +126,8 @@ export class SaveService {
   loadSlot(slot: number): boolean {
     const data = this.backend.load(slot);
     if (!data) return false;
+    // Schema upgrades for saves created before newer features existed.
+    data.house ??= { ownedItems: [] };
     this.data = data;
     this.activeSlot = slot;
     return true;
@@ -163,6 +165,7 @@ export class SaveService {
       questionHistory: {},
       defeatedTrainers: [],
       badges: [],
+      house: { ownedItems: [] },
       totals: { battlesWon: 0, battlesLost: 0, questionsAnswered: 0 },
     };
     this.activeSlot = slot;

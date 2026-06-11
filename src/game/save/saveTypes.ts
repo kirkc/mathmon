@@ -67,6 +67,10 @@ export interface SaveData {
   questionHistory: Record<string, QuestionHistoryEntry>;
   defeatedTrainers: string[];
   badges: string[];
+  /** Furniture purchased for the player's house (item ids). */
+  house: {
+    ownedItems: string[];
+  };
   totals: {
     battlesWon: number;
     battlesLost: number;

@@ -109,10 +109,198 @@ export function drawWaterFrame(ctx: Ctx, frame: number): void {
   if (frame === 2) px(ctx, 4, 11, '#e8f4ff');
 }
 
+/**
+ * Marsh grass — animated like tall grass (it's the marsh's encounter tile).
+ * Darker, reedier, with seed heads.
+ */
+export function drawMarshGrassFrame(ctx: Ctx, frame: number): void {
+  px(ctx, 0, 0, '#4a6b42', T, T);
+  dither(ctx, 0, 0, T, T, '#3d5c38', 1);
+  const sway = frame % 2 === 0 ? 0 : 1;
+  for (const gx of [2, 7, 12]) {
+    for (const gy of [4, 11]) {
+      px(ctx, gx, gy - 1, '#2c4a28', 1, 4);
+      px(ctx, gx + 2, gy, '#2c4a28', 1, 3);
+      px(ctx, gx + 1 + sway, gy - 3, '#6b8a4a', 1, 3); // swaying reed
+      px(ctx, gx + 1 + sway, gy - 4, '#8a9a5a'); // seed head
+    }
+  }
+}
+
+/** Murky marsh water — slow ripple, no sparkle (it's swamp). */
+export function drawMarshWaterFrame(ctx: Ctx, frame: number): void {
+  px(ctx, 0, 0, '#3d5a4e', T, T);
+  dither(ctx, 0, 0, T, T, '#46685a', frame % 2);
+  const drift = frame % 3;
+  for (const [wy, base] of [[4, 2], [9, 6], [14, 0]] as const) {
+    const wx = (base + drift) % 10;
+    px(ctx, wx, wy, '#5d8270', 4, 1);
+  }
+  if (frame === 2) px(ctx, 11, 6, '#74a08a'); // lazy bubble
+}
+
 export function generateTileTextures(scene: Phaser.Scene): void {
   makeTexture(scene, 'tile-grass', T, T, (ctx) => drawGrassBase(ctx));
   makeTexture(scene, 'tile-tallgrass', T, T, (ctx) => drawTallGrassFrame(ctx, 0));
   makeTexture(scene, 'tile-water', T, T, (ctx) => drawWaterFrame(ctx, 0));
+  makeTexture(scene, 'tile-marsh-grass', T, T, (ctx) => drawMarshGrassFrame(ctx, 0));
+  makeTexture(scene, 'tile-marsh-water', T, T, (ctx) => drawMarshWaterFrame(ctx, 0));
+
+  makeTexture(scene, 'tile-mud', T, T, (ctx) => {
+    px(ctx, 0, 0, '#6b5638', T, T);
+    for (let y = 0; y < T; y++) {
+      for (let x = 0; x < T; x++) {
+        if (speckle(x, y, 9)) px(ctx, x, y, '#5d4a30');
+        else if (speckle(x, y, 12, 4)) px(ctx, x, y, '#7d6644');
+      }
+    }
+    px(ctx, 3, 5, '#52412a', 3, 1); // puddle glints
+    px(ctx, 10, 11, '#52412a', 2, 1);
+    px(ctx, 4, 5, '#86a08a', 1, 1);
+  });
+
+  makeTexture(scene, 'tile-dead-tree', T, T, (ctx) => {
+    px(ctx, 0, 0, '#4a6b42', T, T);
+    dither(ctx, 0, 0, T, T, '#3d5c38', 0);
+    px(ctx, 5, 12, '#2c3a28', 7, 2); // shadow
+    px(ctx, 6, 4, '#4a4038', 4, 10); // gnarled trunk
+    px(ctx, 7, 4, '#5d534a', 2, 10);
+    px(ctx, 3, 2, '#4a4038', 4, 2); // bare branches
+    px(ctx, 4, 1, '#4a4038', 1, 3);
+    px(ctx, 10, 3, '#4a4038', 4, 2);
+    px(ctx, 12, 2, '#4a4038', 1, 2);
+    px(ctx, 6, 6, '#5d7a4a', 3, 2); // moss patch
+    px(ctx, 8, 10, '#5d7a4a', 2, 1);
+  });
+
+  makeTexture(scene, 'tile-reeds', T, T, (ctx) => {
+    px(ctx, 0, 0, '#6b5638', T, T);
+    dither(ctx, 0, 0, T, T, '#5d4a30', 0);
+    for (const rx of [3, 6, 9, 12]) {
+      px(ctx, rx, 4, '#5d7a3a', 1, 9);
+      px(ctx, rx, 2, '#8a6b42', 1, 3); // cattail head
+      px(ctx, rx + 1, 7, '#6b8a4a', 1, 5);
+    }
+  });
+
+  makeTexture(scene, 'tile-mushroom', T, T, (ctx) => {
+    px(ctx, 0, 0, '#6b5638', T, T);
+    dither(ctx, 0, 0, T, T, '#5d4a30', 0);
+    const caps: Array<[number, number, string]> = [[4, 7, '#c46a4a'], [10, 5, '#d9a05a'], [8, 11, '#c46a4a']];
+    for (const [mx, my, color] of caps) {
+      px(ctx, mx, my + 2, '#e8dcc8', 2, 2); // stem
+      px(ctx, mx - 1, my, color, 4, 2); // cap
+      px(ctx, mx, my - 1, color, 2, 1);
+      px(ctx, mx, my, '#f2e0c0', 1, 1); // spot
+    }
+  });
+
+  makeTexture(scene, 'tile-lilypad', T, T, (ctx) => {
+    drawMarshWaterFrame(ctx, 0);
+    px(ctx, 3, 4, '#3f7a3a', 10, 8); // pad
+    px(ctx, 4, 3, '#3f7a3a', 8, 10);
+    px(ctx, 4, 4, '#4f9448', 8, 7);
+    px(ctx, 8, 4, '#3d5a4e', 2, 4); // notch
+    px(ctx, 5, 5, '#6bb060', 3, 2); // highlight
+    px(ctx, 10, 9, '#f2a0b8', 2, 2); // small blossom
+    px(ctx, 10, 9, '#f8d048', 1, 1);
+  });
+
+  // ---- player house exterior (distinct teal roof + bright timberwork)
+  makeTexture(scene, 'tile-roof-player', T, T, (ctx) => {
+    px(ctx, 0, 0, '#3aa8a0', T, T);
+    for (let row = 0; row < 4; row++) {
+      const y = row * 4;
+      px(ctx, 0, y + 3, '#2c847e', T, 1);
+      const offset = row % 2 === 0 ? 0 : 4;
+      for (let x = offset; x < T; x += 8) px(ctx, x, y, '#2c847e', 1, 3);
+      px(ctx, 0, y, '#56c4bc', T, 1);
+    }
+  });
+
+  makeTexture(scene, 'tile-wall-player', T, T, (ctx) => {
+    px(ctx, 0, 0, '#f4ede0', T, T);
+    dither(ctx, 0, 0, T, T, '#e8dccb', 0);
+    px(ctx, 0, 0, '#3aa8a0', T, 1); // teal trim
+    px(ctx, 0, 15, '#3aa8a0', T, 1);
+    px(ctx, 0, 0, '#3aa8a0', 1, T);
+    px(ctx, 15, 0, '#3aa8a0', 1, T);
+    px(ctx, 4, 4, '#2c847e', 8, 7); // window with flower box
+    px(ctx, 5, 5, '#a7d3f2', 6, 5);
+    px(ctx, 5, 5, '#d2ecfa', 3, 2);
+    px(ctx, 8, 5, '#2c847e', 1, 5);
+    px(ctx, 4, 11, '#8a5a2b', 8, 2);
+    px(ctx, 5, 10, '#f2647c', 2, 1);
+    px(ctx, 9, 10, '#f8d048', 2, 1);
+  });
+
+  makeTexture(scene, 'tile-door-player', T, T, (ctx) => {
+    px(ctx, 0, 0, '#f4ede0', T, T);
+    dither(ctx, 0, 0, T, T, '#e8dccb', 0);
+    px(ctx, 2, 1, '#2c847e', 12, 15); // frame
+    px(ctx, 3, 2, '#3aa8a0', 10, 14);
+    px(ctx, 4, 3, '#56c4bc', 8, 2); // lit top
+    // star emblem — it's YOUR house
+    px(ctx, 7, 6, '#f8d048', 2, 2);
+    px(ctx, 6, 7, '#f8d048', 4, 1);
+    px(ctx, 7, 5, '#fff3b0', 2, 1);
+    px(ctx, 7, 9, '#f8d048', 2, 1);
+    px(ctx, 11, 9, '#fff3b0', 1, 1); // knob
+    px(ctx, 3, 15, '#c4b288', 10, 1); // step
+  });
+
+  // ---- house interior
+  makeTexture(scene, 'tile-wood-floor', T, T, (ctx) => {
+    px(ctx, 0, 0, '#c79256', T, T);
+    for (const fy of [0, 4, 8, 12]) {
+      px(ctx, 0, fy + 3, '#a8743c', T, 1);
+      const offset = (fy / 4) % 2 === 0 ? 0 : 8;
+      px(ctx, offset, fy, '#a8743c', 1, 3);
+      px(ctx, 0, fy, '#d9a868', T, 1);
+    }
+  });
+
+  makeTexture(scene, 'tile-interior-wall', T, T, (ctx) => {
+    // Vertical wood paneling, clearly darker than the floor.
+    px(ctx, 0, 0, '#8a6b42', T, T);
+    for (const wx of [0, 4, 8, 12]) {
+      px(ctx, wx, 0, '#6b5232', 1, T);
+      px(ctx, wx + 1, 0, '#9c7c50', 1, T);
+    }
+    px(ctx, 0, 0, '#a8895c', T, 2); // top trim
+    px(ctx, 0, 13, '#5d4326', T, 3); // baseboard shadow
+  });
+
+  makeTexture(scene, 'tile-stairs-up', T, T, (ctx) => {
+    px(ctx, 0, 0, '#c79256', T, T);
+    for (let s = 0; s < 4; s++) {
+      px(ctx, 0, 12 - s * 4, '#a8743c', T, 1);
+      px(ctx, 0, 13 - s * 4, '#d9a868', T, 1);
+    }
+    px(ctx, 6, 1, '#5d4a30', 4, 2); // dark opening at top
+    px(ctx, 7, 4, '#f8d048', 2, 1); // "up" arrow hint
+    px(ctx, 6, 5, '#f8d048', 1, 1);
+    px(ctx, 9, 5, '#f8d048', 1, 1);
+  });
+
+  makeTexture(scene, 'tile-stairs-down', T, T, (ctx) => {
+    px(ctx, 0, 0, '#c79256', T, T);
+    for (let s = 0; s < 4; s++) {
+      px(ctx, 0, 2 + s * 4, '#a8743c', T, 1);
+      px(ctx, 0, 3 + s * 4, '#8a6b42', T, 1);
+    }
+    px(ctx, 6, 13, '#5d4a30', 4, 2);
+    px(ctx, 7, 10, '#f8d048', 2, 1);
+    px(ctx, 6, 9, '#f8d048', 1, 1);
+    px(ctx, 9, 9, '#f8d048', 1, 1);
+  });
+
+  makeTexture(scene, 'tile-house-exit', T, T, (ctx) => {
+    px(ctx, 0, 0, '#c79256', T, T);
+    px(ctx, 2, 2, '#5d4a30', 12, 14); // doorway shadow
+    px(ctx, 3, 3, '#6b5a40', 10, 13);
+    px(ctx, 6, 14, '#f8d048', 4, 1); // light from outside
+  });
 
   makeTexture(scene, 'tile-path', T, T, (ctx) => {
     px(ctx, 0, 0, '#d9b873', T, T);
@@ -217,9 +405,10 @@ export function generateTileTextures(scene: Phaser.Scene): void {
     px(ctx, 4, 15, '#c4b288', 8, 1); // step
   });
 
+  // Sign art is transparent — the scene layers it over the local ground
+  // tile so signs work on grass, mud, or anything else.
   makeTexture(scene, 'tile-sign', T, T, (ctx) => {
-    drawGrassBase(ctx);
-    px(ctx, 6, 13, '#4a7a38', 5, 1); // shadow
+    px(ctx, 6, 13, 'rgba(0,0,0,0.25)', 5, 1); // shadow
     px(ctx, 7, 9, WOOD.dark, 2, 5); // post
     px(ctx, 2, 2, WOOD.dark, 12, 7); // board outline
     px(ctx, 3, 3, WOOD.light, 10, 5);
@@ -276,6 +465,182 @@ export function generateTileTextures(scene: Phaser.Scene): void {
     px(ctx, 7, 5, '#dde2ec', 2, 5);
     px(ctx, 5, 8, '#dde2ec', 2, 2);
     px(ctx, 9, 8, '#dde2ec', 2, 2);
+  });
+}
+
+// -------------------------------------------------------------- furniture
+
+export function generateFurnitureTextures(scene: Phaser.Scene): void {
+  makeTexture(scene, 'item-computer', T, T, (ctx) => {
+    px(ctx, 1, 8, WOOD.mid, 14, 6); // desk
+    px(ctx, 1, 8, WOOD.pale, 14, 1);
+    px(ctx, 2, 14, WOOD.dark, 2, 2); // legs
+    px(ctx, 12, 14, WOOD.dark, 2, 2);
+    px(ctx, 4, 1, '#26203a', 8, 7); // monitor
+    px(ctx, 5, 2, '#3a6ac8', 6, 5);
+    px(ctx, 5, 2, '#7db8ea', 6, 1);
+    px(ctx, 6, 3, '#f8d048', 2, 1); // shop icon on screen
+    px(ctx, 6, 5, '#ffffff', 4, 1);
+    px(ctx, 12, 9, '#d0d0c0', 3, 2); // mouse
+  });
+
+  makeTexture(scene, 'item-bed', T, 32, (ctx) => {
+    px(ctx, 1, 2, WOOD.dark, 14, 28); // frame
+    px(ctx, 2, 3, '#f4ede0', 12, 26);
+    px(ctx, 2, 3, '#ffffff', 12, 7); // pillow
+    px(ctx, 3, 4, '#e8e0f4', 10, 4);
+    px(ctx, 2, 11, '#c84848', 12, 16); // blanket
+    px(ctx, 2, 11, '#e06060', 12, 2);
+    px(ctx, 2, 19, '#a83232', 12, 1); // fold
+    px(ctx, 2, 27, '#f4ede0', 12, 2);
+  });
+
+  makeTexture(scene, 'item-couch', T, T, (ctx) => {
+    px(ctx, 0, 4, '#3a6ac8', 16, 10);
+    px(ctx, 0, 3, '#5a86d8', 16, 2);
+    px(ctx, 1, 7, '#5a86d8', 6, 4); // cushions
+    px(ctx, 9, 7, '#5a86d8', 6, 4);
+    px(ctx, 0, 4, '#2c4f96', 2, 10); // arms
+    px(ctx, 14, 4, '#2c4f96', 2, 10);
+    px(ctx, 1, 14, WOOD.dark, 2, 2);
+    px(ctx, 13, 14, WOOD.dark, 2, 2);
+  });
+
+  makeTexture(scene, 'item-tv', T, T, (ctx) => {
+    px(ctx, 2, 10, WOOD.mid, 12, 4); // stand
+    px(ctx, 2, 10, WOOD.pale, 12, 1);
+    px(ctx, 0, 0, '#26203a', 16, 10); // big screen
+    px(ctx, 1, 1, '#3a4a8c', 14, 8);
+    px(ctx, 2, 2, '#86c860', 6, 4); // battle replay on screen
+    px(ctx, 9, 3, '#e8783c', 3, 3);
+    px(ctx, 3, 6, '#f8f8f0', 8, 1);
+    px(ctx, 1, 1, '#7db8ea', 14, 1); // glare
+  });
+
+  makeTexture(scene, 'item-fridge', T, T, (ctx) => {
+    px(ctx, 3, 0, '#d0d8e0', 10, 15);
+    px(ctx, 3, 0, '#e8eef4', 10, 1);
+    px(ctx, 3, 5, '#a8b4c0', 10, 1); // freezer line
+    px(ctx, 11, 2, '#6d7689', 1, 2); // handles
+    px(ctx, 11, 7, '#6d7689', 1, 4);
+    px(ctx, 4, 8, '#f2647c', 2, 2); // magnet
+    px(ctx, 3, 15, '#8a93a6', 10, 1);
+  });
+
+  makeTexture(scene, 'item-plant', T, T, (ctx) => {
+    px(ctx, 5, 10, '#c46a4a', 6, 5); // pot
+    px(ctx, 4, 10, '#d9885a', 8, 2);
+    px(ctx, 7, 4, '#2f8a2f', 2, 7); // stem
+    px(ctx, 4, 2, '#3f9c4e', 4, 4); // leaves
+    px(ctx, 9, 3, '#3f9c4e', 4, 3);
+    px(ctx, 6, 0, '#4fb35e', 4, 3);
+    px(ctx, 5, 2, '#6bc878', 2, 1);
+  });
+
+  makeTexture(scene, 'item-wardrobe', T, T, (ctx) => {
+    px(ctx, 2, 0, WOOD.mid, 12, 15);
+    px(ctx, 2, 0, WOOD.pale, 12, 1);
+    px(ctx, 3, 1, WOOD.light, 5, 13); // doors
+    px(ctx, 9, 1, WOOD.light, 4, 13);
+    px(ctx, 8, 0, WOOD.dark, 1, 15); // center seam
+    px(ctx, 7, 6, '#f8d048', 1, 2); // knobs
+    px(ctx, 9, 6, '#f8d048', 1, 2);
+    px(ctx, 2, 15, WOOD.dark, 12, 1);
+  });
+
+  makeTexture(scene, 'item-wallart-1', T, T, (ctx) => {
+    px(ctx, 2, 3, WOOD.dark, 12, 10); // frame
+    px(ctx, 3, 4, '#9adcf0', 10, 8); // meadow scene
+    px(ctx, 3, 9, '#86c860', 10, 3);
+    px(ctx, 5, 5, '#f8d048', 2, 2); // sun
+    px(ctx, 9, 8, '#c83a3a', 2, 2); // tiny roof
+  });
+
+  makeTexture(scene, 'item-wallart-2', T, T, (ctx) => {
+    px(ctx, 2, 3, '#f8d048', 12, 10); // gold frame
+    px(ctx, 3, 4, '#f8f8f0', 10, 8);
+    px(ctx, 7, 5, '#c83a3a', 2, 4); // abstract "7"
+    px(ctx, 6, 5, '#c83a3a', 3, 1);
+    px(ctx, 4, 9, '#3a6ac8', 3, 2);
+    px(ctx, 10, 6, '#3f9c4e', 2, 3);
+  });
+
+  makeTexture(scene, 'item-wallart-3', T, T, (ctx) => {
+    px(ctx, 2, 3, WOOD.dark, 12, 10);
+    px(ctx, 3, 4, '#c0d0f8', 10, 8);
+    px(ctx, 4, 7, '#e8783c', 3, 3); // the three starters, tiny
+    px(ctx, 7, 6, '#6ab84a', 3, 3);
+    px(ctx, 10, 7, '#58a8e0', 2, 3);
+  });
+
+  makeTexture(scene, 'item-chair', T, T, (ctx) => {
+    px(ctx, 3, 1, '#c84848', 10, 5); // back
+    px(ctx, 3, 1, '#e06060', 10, 1);
+    px(ctx, 3, 6, '#e06060', 10, 5); // seat
+    px(ctx, 3, 11, WOOD.dark, 2, 4); // legs
+    px(ctx, 11, 11, WOOD.dark, 2, 4);
+  });
+
+  makeTexture(scene, 'item-fireplace', T, T, (ctx) => {
+    px(ctx, 1, 0, '#8a8278', 14, 15); // stone surround
+    px(ctx, 1, 0, '#a8a098', 14, 2);
+    for (let y = 2; y < 14; y += 3) {
+      for (let x = 1 + (y % 2); x < 15; x += 4) px(ctx, x, y, '#6d665c', 1, 1);
+    }
+    px(ctx, 4, 5, '#26203a', 8, 9); // firebox
+    px(ctx, 5, 9, '#f04830', 6, 4); // fire
+    px(ctx, 6, 7, '#f8841c', 4, 4);
+    px(ctx, 7, 6, '#f8d048', 2, 3);
+    px(ctx, 5, 13, WOOD.dark, 6, 1); // log
+  });
+
+  makeTexture(scene, 'item-table', T, T, (ctx) => {
+    px(ctx, 1, 4, WOOD.light, 14, 7);
+    px(ctx, 1, 4, WOOD.pale, 14, 1);
+    px(ctx, 2, 11, WOOD.dark, 2, 4);
+    px(ctx, 12, 11, WOOD.dark, 2, 4);
+    px(ctx, 6, 5, '#f8f8f0', 4, 3); // doily
+    px(ctx, 7, 6, '#f2647c', 2, 1); // little flower
+  });
+
+  makeTexture(scene, 'item-lamp', T, T, (ctx) => {
+    px(ctx, 4, 0, '#f8d048', 8, 5); // shade
+    px(ctx, 3, 4, '#e0b830', 10, 1);
+    px(ctx, 5, 1, '#fff3b0', 3, 3); // glow
+    px(ctx, 7, 5, WOOD.dark, 2, 8); // pole
+    px(ctx, 5, 13, WOOD.dark, 6, 2); // base
+  });
+
+  makeTexture(scene, 'item-doormat', T, T, (ctx) => {
+    px(ctx, 1, 4, '#a8743c', 14, 9);
+    px(ctx, 2, 5, '#c79256', 12, 7);
+    px(ctx, 3, 7, '#8a5a2b', 10, 1); // "WELCOME" dashes
+    px(ctx, 4, 9, '#8a5a2b', 8, 1);
+  });
+
+  makeTexture(scene, 'item-mirror', T, T, (ctx) => {
+    px(ctx, 4, 1, '#f8d048', 8, 14); // gold frame
+    px(ctx, 5, 2, '#a7d3f2', 6, 12);
+    px(ctx, 6, 3, '#d2ecfa', 2, 8); // shine
+    px(ctx, 9, 4, '#7db8ea', 1, 6);
+  });
+
+  makeTexture(scene, 'item-nightstand', T, T, (ctx) => {
+    px(ctx, 3, 4, WOOD.mid, 10, 10);
+    px(ctx, 3, 4, WOOD.pale, 10, 1);
+    px(ctx, 4, 7, WOOD.dark, 8, 1); // drawer line
+    px(ctx, 7, 8, '#f8d048', 2, 1); // knob
+    px(ctx, 4, 14, WOOD.dark, 2, 2);
+    px(ctx, 10, 14, WOOD.dark, 2, 2);
+    px(ctx, 5, 1, '#7db8ea', 3, 3); // water glass
+    px(ctx, 9, 2, '#f8f8f0', 3, 2); // flashcards
+  });
+
+  makeTexture(scene, 'item-rug', T, T, (ctx) => {
+    px(ctx, 1, 2, '#c84848', 14, 12);
+    px(ctx, 2, 3, '#e06060', 12, 10);
+    px(ctx, 4, 5, '#f2a0a0', 8, 6);
+    px(ctx, 6, 7, '#f8d048', 4, 2); // center medallion
   });
 }
 
@@ -394,7 +759,9 @@ export function generateCharacterTextures(scene: Phaser.Scene): void {
 
 // -------------------------------------------------------------- creatures
 
-type CreatureShape = 'cub' | 'leaf' | 'bunny' | 'rock' | 'bird' | 'bug' | 'spiky' | 'tank';
+type CreatureShape =
+  | 'cub' | 'leaf' | 'bunny' | 'rock' | 'bird' | 'bug' | 'spiky' | 'tank'
+  | 'frog' | 'wisp' | 'snail';
 
 interface CreatureStyle {
   body: string;
@@ -479,6 +846,39 @@ function drawCreature(ctx: Ctx, s: CreatureStyle): void {
       px(ctx, 2, 9, accent, 2, 1);
       px(ctx, 12, 9, accent, 2, 1);
       break;
+    case 'frog': // eye bumps on top, wide grin, splayed feet
+      px(ctx, 4, 4, OUTLINE, 3, 3);
+      px(ctx, 9, 4, OUTLINE, 3, 3);
+      px(ctx, 5, 5, '#f8f8f0', 1, 1);
+      px(ctx, 10, 5, '#f8f8f0', 1, 1);
+      px(ctx, 5, 10, OUTLINE, 6, 1); // grin
+      px(ctx, 4, 9, OUTLINE, 1, 1);
+      px(ctx, 11, 9, OUTLINE, 1, 1);
+      px(ctx, 2, 12, body, 3, 2); // splayed legs
+      px(ctx, 11, 12, body, 3, 2);
+      px(ctx, 6, 6, accent, 4, 1); // moss stripe
+      break;
+    case 'wisp': // wavy fog tail, faint inner glow
+      px(ctx, 5, 13, OUTLINE, 2, 2); // wavy tail wisps
+      px(ctx, 8, 14, OUTLINE, 2, 1);
+      px(ctx, 11, 12, OUTLINE, 2, 2);
+      px(ctx, 6, 14, body, 1, 1);
+      px(ctx, 11, 13, body, 1, 1);
+      px(ctx, 7, 9, accent, 2, 2); // inner glow
+      px(ctx, 3, 5, body, 2, 2); // drifting puff
+      px(ctx, 12, 4, body, 2, 2);
+      break;
+    case 'snail': // spiral shell on the back
+      px(ctx, 7, 2, OUTLINE, 8, 9);
+      px(ctx, 8, 3, accent, 6, 7);
+      px(ctx, 9, 4, body, 4, 5); // spiral rings
+      px(ctx, 10, 5, accent, 2, 3);
+      px(ctx, 10, 6, '#f8f8f0', 1, 1); // shell glint
+      px(ctx, 4, 3, OUTLINE, 1, 3); // eye stalks
+      px(ctx, 6, 2, OUTLINE, 1, 4);
+      px(ctx, 4, 2, belly, 1, 1);
+      px(ctx, 6, 1, belly, 1, 1);
+      break;
     case 'tank': { // wide shell with plus emblem
       px(ctx, 2, 6, OUTLINE, 12, 8);
       px(ctx, 3, 7, body, 10, 6);
@@ -509,6 +909,9 @@ const CREATURE_STYLES: Record<string, CreatureStyle> = {
   'creature-buzzlet': { body: '#f8d048', bodyLight: '#ffe480', bodyShade: '#d9b32e', belly: '#f8e8a0', accent: '#26203a', shape: 'bug' },
   'creature-thistletot': { body: '#4a8c3a', bodyLight: '#62a850', bodyShade: '#39702c', belly: '#a0c878', accent: '#2c5a20', shape: 'spiky' },
   'creature-plusaur': { body: '#b09060', bodyLight: '#c7a978', bodyShade: '#94774b', belly: '#d8c391', accent: '#f8d048', shape: 'tank' },
+  'creature-croakle': { body: '#6b9a4a', bodyLight: '#85b362', bodyShade: '#557d3a', belly: '#d8e0a0', accent: '#3d5c38', shape: 'frog' },
+  'creature-wisplit': { body: '#c8d4dc', bodyLight: '#e4ecf2', bodyShade: '#a8b8c4', belly: '#f0f4f8', accent: '#8cc4ee', shape: 'wisp' },
+  'creature-snailby': { body: '#d9a05a', bodyLight: '#e8b878', bodyShade: '#b88344', belly: '#f2e0c0', accent: '#8a5a2b', shape: 'snail' },
 };
 
 export function generateCreatureTextures(scene: Phaser.Scene): void {
@@ -521,6 +924,7 @@ export function generateAllTextures(scene: Phaser.Scene): void {
   generateTileTextures(scene);
   generateCharacterTextures(scene);
   generateCreatureTextures(scene);
+  generateFurnitureTextures(scene);
 }
 
 // ---------------------------------------------------- ambient tile motion
@@ -532,10 +936,15 @@ export function generateAllTextures(scene: Phaser.Scene): void {
  * will be fishable), so the world feels alive without being busy.
  */
 export function startTileAnimations(scene: Phaser.Scene): void {
-  const water = scene.textures.get('tile-water');
-  const grass = scene.textures.get('tile-tallgrass');
-  if (!(water instanceof Phaser.Textures.CanvasTexture)) return;
-  if (!(grass instanceof Phaser.Textures.CanvasTexture)) return;
+  const canvases: Array<[Phaser.Textures.CanvasTexture, (ctx: Ctx, frame: number) => void, number]> = [];
+  const register = (key: string, draw: (ctx: Ctx, frame: number) => void, frames: number) => {
+    const tex = scene.textures.get(key);
+    if (tex instanceof Phaser.Textures.CanvasTexture) canvases.push([tex, draw, frames]);
+  };
+  register('tile-water', drawWaterFrame, 3);
+  register('tile-tallgrass', drawTallGrassFrame, 2);
+  register('tile-marsh-water', drawMarshWaterFrame, 3);
+  register('tile-marsh-grass', drawMarshGrassFrame, 2);
 
   let frame = 0;
   scene.time.addEvent({
@@ -543,10 +952,10 @@ export function startTileAnimations(scene: Phaser.Scene): void {
     loop: true,
     callback: () => {
       frame = (frame + 1) % 6;
-      drawWaterFrame(water.context, frame % 3);
-      water.refresh();
-      drawTallGrassFrame(grass.context, frame % 2);
-      grass.refresh();
+      for (const [tex, draw, frames] of canvases) {
+        draw(tex.context, frame % frames);
+        tex.refresh();
+      }
     },
   });
 }
@@ -569,4 +978,21 @@ export const TILE_TEXTURES: Record<string, string> = {
   g: 'tile-gym-wall',
   M: 'tile-gym-mat',
   E: 'tile-gym-exit',
+  // marsh ecosystem
+  ';': 'tile-marsh-grass',
+  w: 'tile-marsh-water',
+  m: 'tile-mud',
+  Y: 'tile-dead-tree',
+  r: 'tile-reeds',
+  u: 'tile-mushroom',
+  L: 'tile-lilypad',
+  // player house
+  Q: 'tile-roof-player',
+  q: 'tile-wall-player',
+  h: 'tile-door-player',
+  P: 'tile-wood-floor',
+  p: 'tile-interior-wall',
+  U: 'tile-stairs-up',
+  V: 'tile-stairs-down',
+  e: 'tile-house-exit',
 };

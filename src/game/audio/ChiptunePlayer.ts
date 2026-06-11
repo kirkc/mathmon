@@ -4,7 +4,7 @@
  * triangle bass, GBA style.
  */
 
-type TrackName = 'title' | 'overworld' | 'gym' | 'battle';
+type TrackName = 'title' | 'overworld' | 'gym' | 'battle' | 'marsh' | 'house';
 
 const NOTE_FREQ: Record<string, number> = {
   C3: 130.81, D3: 146.83, E3: 164.81, F3: 174.61, G3: 196.0, A3: 220.0, B3: 246.94,
@@ -63,6 +63,32 @@ const SONGS: Record<TrackName, Song> = {
     bass: [
       ['C3', 8], ['E3', 8], ['G3', 8], ['G3', 8],
       ['D3', 8], ['F3', 8], ['C3', 8], ['C3', 8],
+    ],
+  },
+  marsh: {
+    // Slow, minor, a little mysterious — different ecosystem, different mood.
+    bpm: 88,
+    lead: [
+      ['D4', 4], ['F4', 4], ['A4', 6], [null, 2],
+      ['G4', 4], ['F4', 4], ['E4', 6], [null, 2],
+      ['D4', 4], ['F4', 4], ['C5', 4], ['A4', 4],
+      ['G4', 4], ['E4', 4], ['D4', 6], [null, 2],
+    ],
+    bass: [
+      ['D3', 8], ['A3', 8], ['C3', 8], ['G3', 8],
+      ['D3', 8], ['F3', 8], ['A3', 8], ['D3', 8],
+    ],
+  },
+  house: {
+    // Cozy little waltz for home sweet home.
+    bpm: 100,
+    lead: [
+      ['G4', 3], ['B4', 3], ['D5', 6], ['C5', 3], ['A4', 3], ['G4', 6],
+      ['E4', 3], ['G4', 3], ['C5', 6], ['B4', 3], ['G4', 3], ['G4', 6],
+    ],
+    bass: [
+      ['G3', 6], ['D3', 6], ['C3', 6], ['D3', 6],
+      ['C3', 6], ['E3', 6], ['G3', 6], ['G3', 6],
     ],
   },
   battle: {

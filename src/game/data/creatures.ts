@@ -90,6 +90,33 @@ export const CREATURE_SPECIES: Record<string, CreatureSpecies> = {
     spriteKey: 'creature-plusaur',
     description: "Gym Leader Ada's champion. Its shell is carved with plus signs.",
   },
+  croakle: {
+    id: 'croakle',
+    name: 'Croakle',
+    type: 'Bog',
+    personality: 'patient',
+    baseHp: 36,
+    spriteKey: 'creature-croakle',
+    description: 'A mossy marsh frog. It croaks once for every fact it forgets.',
+  },
+  wisplit: {
+    id: 'wisplit',
+    name: 'Wisplit',
+    type: 'Mist',
+    personality: 'shy',
+    baseHp: 32,
+    spriteKey: 'creature-wisplit',
+    description: 'A drifting wisp of marsh fog. It splits in two when startled.',
+  },
+  snailby: {
+    id: 'snailby',
+    name: 'Snailby',
+    type: 'Shell',
+    personality: 'unhurried',
+    baseHp: 40,
+    spriteKey: 'creature-snailby',
+    description: 'A patient snail whose spiral shell subtracts one ring each year.',
+  },
 };
 
 export const STARTER_IDS = ['embercub', 'leafloo', 'aquabbit'] as const;

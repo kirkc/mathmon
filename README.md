@@ -104,6 +104,16 @@ the Continue screen with X.
 - 64x48 connected overworld: Meadow Town, Sumwood Trail (north fields),
   Whispering Woods (west), and Lake Lumen (east), with three trainers
   (Finn, Maya, Theo) plus the Addition Gym with Leader Ada
+- **Minus Marsh**: a swampy second region north of town with its own
+  ecosystem — murky pools, lily pads, reeds, mushrooms, dead trees, marsh
+  music, two trainers (Fern, Silt), and three new wild creatures
+  (Croakle, Wisplit, Snailby). Gated behind the Sum Badge + unlocking
+  Beginning Subtraction
+- **Your own house**: a distinct teal-roofed home in the town center with
+  two floors (living room + bedroom). The computer downstairs runs the
+  MathMart shop — spend battle coins on 19 furniture items (door mat to
+  big-screen TV, including starter plushies) that appear in fixed spots.
+  Your partner creature lives there, hopping happily around
 - Full timing-based battle system with auto-submit answers, attack
   animations, damage popups, and XtraMath-style remediation
 - Adaptive 12-tier progression that never regresses and plateaus while
@@ -117,8 +127,8 @@ the Continue screen with X.
 
 ## TODO — next milestones
 
-- [ ] More maps: Minus Marsh, Difference Cave, Factor Farm, Product Peaks,
-      Quotient Coast, Division Dojo + their gyms
+- [ ] More maps: Difference Cave (+ Subtraction Gym), Factor Farm,
+      Product Peaks, Quotient Coast, Division Dojo + their gyms
 - [ ] More creatures, evolutions, and catching wild creatures (party growth)
 - [ ] Real asset pipeline (sprite atlas, Tiled tilemaps) replacing
       procedural placeholders

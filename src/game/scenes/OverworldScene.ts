@@ -4,6 +4,7 @@ import { worldConfig } from '../../config/worldConfig';
 import { chiptune } from '../audio/ChiptunePlayer';
 import { encounterService } from '../battle/EncounterService';
 import { CREATURE_SPECIES } from '../data/creatures';
+import { HOUSE_FIXTURES, HOUSE_ITEMS } from '../data/houseItems';
 import { ENCOUNTER_TILES, MAPS, SOLID_TILES, type MapDefinition, type NpcDefinition } from '../data/maps';
 import { creatureService } from '../entities/CreatureService';
 import { startTileAnimations, TILE_TEXTURES } from '../gfx/textureFactory';
@@ -33,6 +34,17 @@ export class OverworldScene extends Phaser.Scene {
   private pausePage: 'menu' | 'help' | 'controls' = 'menu';
   private pauseUi: Phaser.GameObjects.Container | null = null;
   private npcSprites = new Map<string, Phaser.GameObjects.Image>();
+  // ---- player house state
+  private itemSolids = new Set<string>();
+  private itemAt = new Map<string, { name?: string; examine: string; isComputer?: boolean }>();
+  private itemSprites: Phaser.GameObjects.Image[] = [];
+  private shopOpen = false;
+  private shopIndex = 0;
+  private shopMessage = '';
+  private shopUi: Phaser.GameObjects.Container | null = null;
+  private companion: Phaser.GameObjects.Image | null = null;
+  private companionTile = { x: 0, y: 0 };
+  private companionHopping = false;
   private keys!: Record<string, Phaser.Input.Keyboard.Key>;
   private pendingBattleNpc: NpcDefinition | null = null;
 
@@ -63,16 +75,24 @@ export class OverworldScene extends Phaser.Scene {
 
     this.renderMap();
     this.spawnNpcs();
+    this.renderHouseItems();
+    this.spawnCompanion();
     startTileAnimations(this);
+    this.shopOpen = false;
+    this.shopUi = null;
 
     this.player = this.add
       .image(this.playerTile.x * TILE + TILE / 2, this.playerTile.y * TILE + TILE / 2, this.playerTexture())
       .setScale(2)
       .setDepth(10);
 
+    // Center maps smaller than the viewport (house interiors) by widening
+    // the camera bounds symmetrically.
     const mapW = this.map.grid[0].length * TILE;
     const mapH = this.map.grid.length * TILE;
-    this.cameras.main.setBounds(0, 0, mapW, mapH);
+    const padX = Math.max(0, (worldConfig.gameWidth - mapW) / 2);
+    const padY = Math.max(0, (worldConfig.gameHeight - mapH) / 2);
+    this.cameras.main.setBounds(-padX, -padY, mapW + padX * 2, mapH + padY * 2);
     this.cameras.main.startFollow(this.player, true);
 
     this.dialog = new DialogBox(this);
@@ -100,10 +120,15 @@ export class OverworldScene extends Phaser.Scene {
 
   private renderMap(): void {
     const grid = this.map.grid;
+    const ground = this.map.key === 'minusMarsh' ? 'tile-mud' : 'tile-grass';
     for (let y = 0; y < grid.length; y++) {
       for (let x = 0; x < grid[y].length; x++) {
         const ch = grid[y][x];
         const base = TILE_TEXTURES[ch] ?? 'tile-grass';
+        // Signs are transparent sprites layered over the local ground.
+        if (ch === 'S') {
+          this.add.image(x * TILE, y * TILE, ground).setOrigin(0).setScale(1);
+        }
         this.add.image(x * TILE, y * TILE, base).setOrigin(0).setScale(1);
       }
     }
@@ -125,7 +150,7 @@ export class OverworldScene extends Phaser.Scene {
   }
 
   update(): void {
-    if (this.paused || this.dialog.isOpen || this.moving) return;
+    if (this.paused || this.shopOpen || this.dialog.isOpen || this.moving) return;
 
     let dir: Facing | null = null;
     if (this.keys.up.isDown || this.keys.w.isDown) dir = 'up';
@@ -140,6 +165,10 @@ export class OverworldScene extends Phaser.Scene {
     chiptune.unlock();
     chiptune.playMusic(this.map.musicTrack);
 
+    if (this.shopOpen) {
+      this.handleShopKey(event);
+      return;
+    }
     if (this.paused) {
       this.handlePauseKey(event);
       return;
@@ -379,10 +408,11 @@ export class OverworldScene extends Phaser.Scene {
     return `player-${dirKey}-${stepping ? this.stepFrame : 0}`;
   }
 
-  /** Terrain-only walkability (ignores NPCs). */
+  /** Terrain-only walkability (ignores NPCs, includes furniture). */
   private isTileWalkable(x: number, y: number): boolean {
     const grid = this.map.grid;
     if (y < 0 || y >= grid.length || x < 0 || x >= grid[y].length) return false;
+    if (this.itemSolids.has(`${x},${y}`)) return false;
     return !SOLID_TILES.has(grid[y][x]);
   }
 
@@ -406,6 +436,16 @@ export class OverworldScene extends Phaser.Scene {
     const warp = this.map.warps[`${x},${y}`];
     if (warp) {
       const save = saveService.requireData();
+      if (warp.requires) {
+        const hasBadge = !warp.requires.badgeId || save.badges.includes(warp.requires.badgeId);
+        const hasLevel =
+          !warp.requires.minLevelNumber ||
+          save.progression.currentLevelNumber >= warp.requires.minLevelNumber;
+        if (!hasBadge || !hasLevel) {
+          this.dialog.show([warp.requires.lockedMessage]);
+          return;
+        }
+      }
       save.player.mapKey = warp.mapKey;
       save.player.tileX = warp.tileX;
       save.player.tileY = warp.tileY;
@@ -430,6 +470,13 @@ export class OverworldScene extends Phaser.Scene {
     const npc = this.map.npcs.find((n) => n.tileX === tx && n.tileY === ty);
     if (npc) {
       this.talkTo(npc);
+      return;
+    }
+
+    const item = this.itemAt.get(`${tx},${ty}`);
+    if (item) {
+      if (item.isComputer) this.openShop();
+      else if (item.examine) this.dialog.show([item.examine]);
       return;
     }
 
@@ -508,6 +555,246 @@ export class OverworldScene extends Phaser.Scene {
     save.player.tileY = this.playerTile.y;
     save.player.facing = this.facing;
     saveService.persist();
+  }
+
+  // -------------------------------------------------------- player house
+
+  /** Place fixtures + purchased furniture, with collision and examine text. */
+  private renderHouseItems(): void {
+    this.itemSolids.clear();
+    this.itemAt.clear();
+    for (const sprite of this.itemSprites) sprite.destroy();
+    this.itemSprites = [];
+    if (!this.map.isPlayerHouse) return;
+
+    const save = saveService.requireData();
+    const placed = [
+      ...HOUSE_FIXTURES.filter((f) => f.mapKey === this.map.key),
+      ...HOUSE_ITEMS.filter((i) => i.mapKey === this.map.key && save.house.ownedItems.includes(i.id)),
+    ];
+    for (const item of placed) {
+      if (item.textureKey) {
+        const scale = 'scale' in item && item.scale ? item.scale : 1;
+        const isBed = item.textureKey === 'item-bed';
+        const img = this.add
+          .image(
+            item.tileX * TILE + TILE / 2,
+            // The bed is two tiles tall; center it over both tiles.
+            item.tileY * TILE + (isBed ? TILE : TILE / 2),
+            item.textureKey,
+          )
+          .setScale(scale)
+          .setDepth(item.solid ? 8 : 2);
+        this.itemSprites.push(img);
+      }
+      const key = `${item.tileX},${item.tileY}`;
+      if (item.solid) this.itemSolids.add(key);
+      this.itemAt.set(key, {
+        name: 'name' in item ? item.name : undefined,
+        examine: item.examine,
+        isComputer: 'isComputer' in item ? item.isComputer : undefined,
+      });
+    }
+  }
+
+  /** The player's partner creature lives in the house, hopping about. */
+  private spawnCompanion(): void {
+    this.companion = null;
+    if (!this.map.isPlayerHouse) return;
+    const lead = saveService.requireData().party[0];
+    if (!lead) return;
+    const species = CREATURE_SPECIES[lead.speciesId];
+
+    // Find a free tile near the middle of the room.
+    const candidates: Array<[number, number]> = [[7, 5], [6, 6], [8, 4], [4, 6], [7, 3], [3, 4]];
+    const spot = candidates.find(([x, y]) => this.isWalkable(x, y) && !this.map.warps[`${x},${y}`]);
+    if (!spot) return;
+
+    this.companionTile = { x: spot[0], y: spot[1] };
+    this.companion = this.add
+      .image(spot[0] * TILE + TILE / 2, spot[1] * TILE + TILE / 2, species.spriteKey)
+      .setScale(1.5)
+      .setDepth(9);
+
+    this.time.addEvent({ delay: 1100, loop: true, callback: () => this.companionHop() });
+  }
+
+  private companionHop(): void {
+    if (!this.companion || this.companionHopping || this.paused || this.shopOpen) return;
+    const dirs = Phaser.Utils.Array.Shuffle([
+      [0, -1], [0, 1], [-1, 0], [1, 0],
+    ] as Array<[number, number]>);
+    let target: [number, number] | null = null;
+    for (const [dx, dy] of dirs) {
+      const nx = this.companionTile.x + dx;
+      const ny = this.companionTile.y + dy;
+      if (
+        this.isWalkable(nx, ny) &&
+        !this.map.warps[`${nx},${ny}`] &&
+        !(nx === this.playerTile.x && ny === this.playerTile.y)
+      ) {
+        target = [nx, ny];
+        break;
+      }
+    }
+
+    this.companionHopping = true;
+    const sprite = this.companion;
+    const hopDone = () => {
+      this.companionHopping = false;
+    };
+    // Little vertical hop either way — it's just happy to be home.
+    this.tweens.add({ targets: sprite, y: sprite.y - 7, duration: 130, yoyo: true, ease: 'Quad.easeOut' });
+    if (target) {
+      if (target[0] !== this.companionTile.x) sprite.setFlipX(target[0] > this.companionTile.x);
+      this.companionTile = { x: target[0], y: target[1] };
+      this.tweens.add({
+        targets: sprite,
+        x: target[0] * TILE + TILE / 2,
+        duration: 260,
+        onComplete: hopDone,
+      });
+      this.tweens.add({
+        targets: sprite,
+        y: target[1] * TILE + TILE / 2,
+        duration: 260,
+        delay: 130,
+        onComplete: () => undefined,
+      });
+    } else {
+      this.time.delayedCall(300, hopDone);
+    }
+  }
+
+  // ------------------------------------------------------- furniture shop
+
+  private openShop(): void {
+    this.shopOpen = true;
+    this.shopIndex = 0;
+    this.shopMessage = 'Welcome to MathMart! Buy comfy things with your battle coins.';
+    chiptune.playSfx('select');
+    this.renderShopUi();
+  }
+
+  private closeShop(): void {
+    this.shopOpen = false;
+    this.shopUi?.destroy();
+    this.shopUi = null;
+  }
+
+  private shopCatalog() {
+    return [...HOUSE_ITEMS].sort((a, b) => a.price - b.price);
+  }
+
+  private handleShopKey(event: KeyboardEvent): void {
+    const catalog = this.shopCatalog();
+    if (matchesControl(event.code, controlsConfig.cancel)) {
+      this.closeShop();
+      return;
+    }
+    if (event.code === 'ArrowUp' || event.code === 'KeyW') {
+      this.shopIndex = (this.shopIndex + catalog.length - 1) % catalog.length;
+      chiptune.playSfx('select');
+      this.renderShopUi();
+      return;
+    }
+    if (event.code === 'ArrowDown' || event.code === 'KeyS') {
+      this.shopIndex = (this.shopIndex + 1) % catalog.length;
+      chiptune.playSfx('select');
+      this.renderShopUi();
+      return;
+    }
+    if (matchesControl(event.code, controlsConfig.interact)) {
+      const save = saveService.requireData();
+      const item = catalog[this.shopIndex];
+      if (save.house.ownedItems.includes(item.id)) {
+        this.shopMessage = `You already own the ${item.name}!`;
+        chiptune.playSfx('wrong');
+      } else if (save.player.coins < item.price) {
+        this.shopMessage = `Not enough coins for the ${item.name}. Win battles to earn more!`;
+        chiptune.playSfx('wrong');
+      } else {
+        save.player.coins -= item.price;
+        save.house.ownedItems.push(item.id);
+        saveService.persist();
+        this.shopMessage = `${item.name} delivered! Check ${item.mapKey === this.map.key ? 'the room' : 'the other floor'}.`;
+        chiptune.playSfx('victory');
+        this.renderHouseItems(); // appears instantly if it's on this floor
+      }
+      this.renderShopUi();
+    }
+  }
+
+  private renderShopUi(): void {
+    this.shopUi?.destroy();
+    const { gameWidth: GW, gameHeight: GH } = worldConfig;
+    const ui = this.add.container(0, 0).setScrollFactor(0).setDepth(1500);
+    this.shopUi = ui;
+    const save = saveService.requireData();
+    const catalog = this.shopCatalog();
+
+    ui.add(this.add.rectangle(0, 0, GW, GH, 0x1a1626, 0.8).setOrigin(0));
+    ui.add(this.add.rectangle(GW / 2, GH / 2, GW - 60, GH - 36, 0x2c3a70).setStrokeStyle(3, 0x5468b8));
+    ui.add(
+      this.add
+        .text(GW / 2, 32, 'MATHMART ONLINE', { fontFamily: FONT_HEADING, fontSize: '13px', color: '#f8d048' })
+        .setOrigin(0.5),
+    );
+    ui.add(
+      this.add
+        .text(GW - 44, 30, `${save.player.coins} coins`, { fontFamily: FONT_BODY, fontSize: '16px', color: '#f8d048' })
+        .setOrigin(1, 0.5),
+    );
+
+    // Scrolling window of rows around the cursor.
+    const VISIBLE = 8;
+    const first = Phaser.Math.Clamp(this.shopIndex - 3, 0, Math.max(0, catalog.length - VISIBLE));
+    catalog.slice(first, first + VISIBLE).forEach((item, row) => {
+      const i = first + row;
+      const y = 56 + row * 22;
+      const selected = i === this.shopIndex;
+      const owned = save.house.ownedItems.includes(item.id);
+      const affordable = save.player.coins >= item.price;
+      const color = owned ? '#7a86ad' : selected ? '#f8d048' : '#ffffff';
+      ui.add(
+        this.add.text(52, y, `${selected ? '▶' : ' '} ${item.name}`, {
+          fontFamily: FONT_BODY,
+          fontSize: '17px',
+          color,
+        }),
+      );
+      ui.add(
+        this.add
+          .text(GW - 52, y, owned ? 'Owned' : `${item.price}c`, {
+            fontFamily: FONT_BODY,
+            fontSize: '17px',
+            color: owned ? '#7a86ad' : affordable ? '#8ee08e' : '#e08a8a',
+          })
+          .setOrigin(1, 0),
+      );
+    });
+    if (catalog.length > VISIBLE) {
+      if (first > 0) ui.add(this.add.text(GW / 2, 48, '▲', { fontFamily: FONT_BODY, fontSize: '12px', color: '#8a93a6' }).setOrigin(0.5));
+      if (first + VISIBLE < catalog.length)
+        ui.add(this.add.text(GW / 2, 56 + VISIBLE * 22, '▼', { fontFamily: FONT_BODY, fontSize: '12px', color: '#8a93a6' }).setOrigin(0.5));
+    }
+
+    ui.add(
+      this.add
+        .text(GW / 2, GH - 44, this.shopMessage, {
+          fontFamily: FONT_BODY,
+          fontSize: '15px',
+          color: '#c0d0f8',
+          wordWrap: { width: GW - 90 },
+          align: 'center',
+        })
+        .setOrigin(0.5),
+    );
+    ui.add(
+      this.add
+        .text(GW / 2, GH - 24, '↑↓ browse · ENTER buy · ESC exit', { fontFamily: FONT_BODY, fontSize: '14px', color: '#8a93a6' })
+        .setOrigin(0.5),
+    );
   }
 
 }

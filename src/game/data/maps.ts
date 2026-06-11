@@ -21,6 +21,12 @@ export interface WarpTarget {
   tileX: number;
   tileY: number;
   facing: 'up' | 'down' | 'left' | 'right';
+  /** Optional gate: all conditions must hold or the warp shows a message. */
+  requires?: {
+    badgeId?: string;
+    minLevelNumber?: number;
+    lockedMessage: string;
+  };
 }
 
 export interface NpcDefinition {
@@ -66,12 +72,14 @@ export interface MapDefinition {
   warps: Record<string, WarpTarget>; // keyed by "x,y"
   npcs: NpcDefinition[];
   signs: SignDefinition[];
-  musicTrack: 'overworld' | 'gym';
+  musicTrack: 'overworld' | 'gym' | 'marsh' | 'house';
+  /** True for the player-house floors (companion creature, furniture). */
+  isPlayerHouse?: boolean;
 }
 
 const OVERWORLD_GRID = [
-  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT::TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT::TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
   'TTT............................S::...........................TTT',
   'TTT.............................::...........................TTT',
   'TTT.....,,,,,,,,,,,.TT..........::..,,,,,,,,,,.TT.........T..TTT',
@@ -104,10 +112,10 @@ const OVERWORLD_GRID = [
   'TTTTTT........,,,,.TT...........::.......fWWWWWWWWWWWWWWWW...TTT',
   'TTTTTT........,,,,.TT...........::.........WWWWWWWWWWWWWW....TTT',
   'TTTTTT........,,,,.TT...........::..........WWWWWWWWWWWW.....TTT',
-  'TTTTTT.............TT...........::..RRRRRR..f.....f....f.....TTT',
-  'TTTTTT..TTTTTTTTTTTTT......f....::..RRRRRR........,,,,,,,....TTT',
-  'TTTTTT..TTTTTTTTTTTTT.RRRR....f.::..RRRRRR..RRRR..,,,,,,,....TTT',
-  'TTTTTT..TTTTTTTTTTTTT.RRRR......::..BBBBBB..RRRR.............TTT',
+  'TTTTTT.............TT......QQQQ.::..RRRRRR..f.....f....f.....TTT',
+  'TTTTTT..TTTTTTTTTTTTT......QQQQ.::..RRRRRR........,,,,,,,....TTT',
+  'TTTTTT..TTTTTTTTTTTTT.RRRR.qqqq.::..RRRRRR..RRRR..,,,,,,,....TTT',
+  'TTTTTT..TTTTTTTTTTTTT.RRRR.qhqq.::..BBBBBB..RRRR.............TTT',
   'TTTT,,..TTTTTTTTTTTTT.BBBB......::..BBDBBB..BBBB......,,,,,..TTT',
   'TTTT,,..TTTTTTTTTTTTT.BdBB......::..........BdBB......,,,,,..TTT',
   'TTT...::::::::::::::::::::::::::::S::::::::::::..............TTT',
@@ -118,6 +126,69 @@ const OVERWORLD_GRID = [
   'TTT..........................................................TTT',
   'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
   'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+];
+
+const MARSH_GRID = [
+  'YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY',
+  'YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY',
+  'YYYmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmYYY',
+  'YYYm;;;;;;;;;mmmmmmSmmmmmmmmmmmmmmmmmmm;;YYY',
+  'YYYm;;;;;;;;;mmmm;;;;;;;;mmwwwwwwwwwwwm;;YYY',
+  'YYYm;;;;;;;;;mmmm;;;;;;;;rwwwwwwwwwwwww;;YYY',
+  'YYYmmmmwwwwwwwwwm;;;;;;;;mwwwwLwwwwwwww;;YYY',
+  'YYYmmrwwwwwwwYwww;;;;;;;;mwwwwwwwwwwwww;;YYY',
+  'YYYmmYwwwLwwwwwww;;;;;;;;mwwwwwwwwwLwww;;YYY',
+  'YYYmmYwwwwwwwwwww;;;mmmmmmwwwwwwwwwwwww;;YYY',
+  'YYYmmmwwwwwwwLwww;;;mmmmmmmwwwwwwwwwwwm;;YYY',
+  'YYYmmmwwwwwwwwwww;;;mmmmmmmrmmmmmmmmmrm;;YYY',
+  'YYYmmmmwwwwwwwwwm;;;mumm;;;;;;;;;;;mYYm;;YYY',
+  'YYYmmmrmmmmmmmmrmmmmmmmm;;;;;;;;;;;mmmmmmYYY',
+  'YYYmmmmmmmmmmmmmmmmmmmmmmmummmmmmmmmmmmmmYYY',
+  'YYYmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmYmmmmmmmYYY',
+  'YYYmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmYYY',
+  'YYYm;;;;;;;;;mmmmmmmmmmmmYYmmmmummmummmmmYYY',
+  'YYYm;;;;;;;;;mYYmmmmmmmmmmmmmwwwwwwwwwwwmYYY',
+  'YYYm;;;;;;;;;mmmmmmmmmmmmmmrwwwwwwwwwwwwwYYY',
+  'YYYm;;;;;;;;;mmmmmmmmmmmmmmmwwwwwwwwwwwwwYYY',
+  'YYYmmmmrmmmmmummmmmmmmmmYmmmwwwwLwwwwwwwwYYY',
+  'YYYmmmmmmwwwwwwwwwmmmmmmYmmmwwwwwwwwwwwwwYYY',
+  'YYYmmmmmwwwwwwwwwwwmmmmmmmmmwwwwwwwwwLwwwYYY',
+  'YYYmmmmmwwwwwwwLwwwrmmmmmmmmwwwwwwwwwwwwwYYY',
+  'YYYmmmmmwwwLwwwwwwwmmmmmmmmmwwwwwwwwwwwwwYYY',
+  'YYYmmmumwwwwwwwwwwwmmmmmmmmmmwwwwwwwwwwwmYYY',
+  'YYYmmmmmwwwwwwwwwwwmmmmmmmmmmrmmmmmmmmummYYY',
+  'YYYmmmmmmwwwwwwwwwmmmmmm;;;;;;;YYm;;;;;;;YYY',
+  'YYYmmmmrmmmmummmmmmmmmmm;;;;;;;mmm;;;;;;;YYY',
+  'YYYmm;;;;;;;;;;;;mYmmmmm;;;;;;;mmm;;;;;;;YYY',
+  'YYYmm;;;;;;;;;;;;mmmmmmmSummmmmmmm;;;;;;;YYY',
+  'YYYmm;;;;;;;;;;;;mmmmmmmmmmmmmmmmm;;;;;;;YYY',
+  'YYYmm;;;;;;;;;;;;mmmmmmmmmmmmmmmmmmmmmmmmYYY',
+  'YYYYYYYYYYYYYYYYYYYYmmmmYYYYYYYYYYYYYYYYYYYY',
+  'YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY',
+];
+
+const PLAYER_HOUSE_1_GRID = [
+  'pppppppppppp',
+  'pPPPPPPPPPUp',
+  'pPPPPPPPPPPp',
+  'pPPPPPPPPPPp',
+  'pPPPPPPPPPPp',
+  'pPPPPPPPPPPp',
+  'pPPPPPPPPPPp',
+  'pPPPPPPPPPPp',
+  'pPPPPPPPPPPp',
+  'pppppeeppppp',
+];
+
+const PLAYER_HOUSE_2_GRID = [
+  'pppppppppppp',
+  'pPPPPPPPPPVp',
+  'pPPPPPPPPPPp',
+  'pPPPPPPPPPPp',
+  'pPPPPPPPPPPp',
+  'pPPPPPPPPPPp',
+  'pPPPPPPPPPPp',
+  'pppppppppppp',
 ];
 
 const GYM_GRID = [
@@ -144,6 +215,24 @@ export const MAPS: Record<string, MapDefinition> = {
     zones: [{ y1: 0, y2: 35, areaId: 'sumwoodTrail' }],
     warps: {
       '38,38': { mapKey: 'gym', tileX: 5, tileY: 8, facing: 'up' },
+      '28,37': { mapKey: 'playerHouse1', tileX: 5, tileY: 8, facing: 'up' },
+      // North gate to Minus Marsh: gym badge + Beginning Subtraction unlocked.
+      '32,0': {
+        mapKey: 'minusMarsh', tileX: 21, tileY: 33, facing: 'up',
+        requires: {
+          badgeId: 'addition-gym',
+          minLevelNumber: 3,
+          lockedMessage: 'The gate to Minus Marsh is closed. Earn the Sum Badge and unlock Beginning Subtraction to enter!',
+        },
+      },
+      '33,0': {
+        mapKey: 'minusMarsh', tileX: 22, tileY: 33, facing: 'up',
+        requires: {
+          badgeId: 'addition-gym',
+          minLevelNumber: 3,
+          lockedMessage: 'The gate to Minus Marsh is closed. Earn the Sum Badge and unlock Beginning Subtraction to enter!',
+        },
+      },
     },
     npcs: [
       {
@@ -221,12 +310,99 @@ export const MAPS: Record<string, MapDefinition> = {
       },
     ],
     signs: [
-      { tileX: 31, tileY: 2, text: 'NORTH GATE - Minus Marsh is under construction. Come back soon!' },
+      { tileX: 31, tileY: 2, text: 'NORTH GATE - Minus Marsh ahead! Trainers need the Sum Badge and Beginning Subtraction to enter.' },
       { tileX: 8, tileY: 20, text: 'WHISPERING WOODS - Shady paths, rustling grass, and one very quiet trainer.' },
       { tileX: 37, tileY: 21, text: 'LAKE LUMEN - No swimming until you know your facts!' },
       { tileX: 34, tileY: 40, text: 'MEADOW TOWN - A friendly place to start an adventure. Gym door is the blue one!' },
     ],
     musicTrack: 'overworld',
+  },
+  minusMarsh: {
+    key: 'minusMarsh',
+    name: 'Minus Marsh',
+    grid: MARSH_GRID,
+    areaId: 'minusMarsh',
+    warps: {
+      '20,34': { mapKey: 'overworld', tileX: 32, tileY: 1, facing: 'down' },
+      '21,34': { mapKey: 'overworld', tileX: 32, tileY: 1, facing: 'down' },
+      '22,34': { mapKey: 'overworld', tileX: 33, tileY: 1, facing: 'down' },
+      '23,34': { mapKey: 'overworld', tileX: 33, tileY: 1, facing: 'down' },
+    },
+    npcs: [
+      {
+        id: 'trainer-fern',
+        name: 'Trainer Fern',
+        spriteKey: 'npc-girl',
+        tileX: 21,
+        tileY: 15,
+        facing: 'down',
+        dialog: ['The marsh teaches patience. And subtraction.'],
+        battle: {
+          type: 'trainer',
+          speciesId: 'croakle',
+          enemyHp: 68,
+          enemyLevel: 5,
+          introText: 'Trainer Fern challenges you!',
+          defeatedDialog: [
+            'Croaked! Your facts are quick.',
+            'Wisplit fog gets thick near the big pools. Watch your step!',
+          ],
+        },
+      },
+      {
+        id: 'trainer-silt',
+        name: 'Trainer Silt',
+        spriteKey: 'npc-boy',
+        tileX: 22,
+        tileY: 9,
+        facing: 'down',
+        dialog: ['Slow and steady... that is the Snailby way.'],
+        battle: {
+          type: 'trainer',
+          speciesId: 'snailby',
+          enemyHp: 74,
+          enemyLevel: 6,
+          introText: 'Trainer Silt challenges you!',
+          defeatedDialog: [
+            'Whoa. Not slow at all!',
+            'They say a Subtraction Gym will open past Difference Cave someday...',
+          ],
+        },
+      },
+    ],
+    signs: [
+      { tileX: 19, tileY: 3, text: 'DIFFERENCE CAVE - Under construction. The diggers are still counting down.' },
+      { tileX: 24, tileY: 31, text: 'MINUS MARSH - Squishy ground! Wild MathMon lurk in the dark reeds.' },
+    ],
+    musicTrack: 'marsh',
+  },
+  playerHouse1: {
+    key: 'playerHouse1',
+    name: 'Your House',
+    grid: PLAYER_HOUSE_1_GRID,
+    areaId: 'meadowTown',
+    isPlayerHouse: true,
+    warps: {
+      '5,9': { mapKey: 'overworld', tileX: 28, tileY: 38, facing: 'down' },
+      '6,9': { mapKey: 'overworld', tileX: 28, tileY: 38, facing: 'down' },
+      '10,1': { mapKey: 'playerHouse2', tileX: 10, tileY: 2, facing: 'down' },
+    },
+    npcs: [],
+    signs: [],
+    musicTrack: 'house',
+  },
+  playerHouse2: {
+    key: 'playerHouse2',
+    name: 'Your Bedroom',
+    grid: PLAYER_HOUSE_2_GRID,
+    areaId: 'meadowTown',
+    isPlayerHouse: true,
+    warps: {
+      '10,1': { mapKey: 'playerHouse1', tileX: 10, tileY: 2, facing: 'down' },
+    },
+    npcs: [],
+    signs: [],
+    musicTrack: 'house',
   },
   gym: {
     key: 'gym',
@@ -266,6 +442,6 @@ export const MAPS: Record<string, MapDefinition> = {
 };
 
 /** Tiles the player cannot walk through. */
-export const SOLID_TILES = new Set(['T', 'W', 'R', 'B', 'd', 'S', 'F', 'g']);
+export const SOLID_TILES = new Set(['T', 'W', 'R', 'B', 'd', 'S', 'F', 'g', 'Y', 'w', 'L', 'Q', 'q', 'p']);
 /** Tiles that can trigger wild encounters. */
-export const ENCOUNTER_TILES = new Set([',']);
+export const ENCOUNTER_TILES = new Set([',', ';']);
