@@ -7,6 +7,11 @@ trainers and gym leaders — but every battle is resolved through **math fluency
 questions** instead of attack menus. All creatures, names, maps, music, and UI
 are original to this project.
 
+**▶ Play it: https://kirkc.github.io/mathmon-quest/**
+
+Every push to `main` auto-builds and deploys via GitHub Actions
+(`.github/workflows/deploy.yml`).
+
 ## Quick start
 
 ```bash
@@ -23,11 +28,10 @@ npm run build    # typecheck + production build to dist/
 | Enter / Space | Interact, advance dialog, confirm |
 | 0–9 | Type answer (auto-submits on the last digit — no Enter needed) |
 | Backspace | Delete digit |
-| Esc | Pause menu (resume, how to play, controls, main menu) |
+| Esc | Pause menu in-game; back in menus |
 | P | Parent dashboard |
 | G | Math glossary |
 | M | Mute music |
-| Esc | Back (menus) |
 
 ## How battles work
 
@@ -69,16 +73,17 @@ engine alone decides when the next tier unlocks.
 src/
   config/            # all tuning knobs (battle, progression, world, controls)
   game/
-    scenes/          # Boot, Preload, Title, Overworld, Battle, Dashboard, Glossary
+    scenes/          # Boot, Preload, Title, SaveSlot, Overworld, Battle,
+                     #   Dashboard, Glossary
     battle/          # BattleEngine (pure logic), BattleService, EncounterService
     math/            # QuestionRepository (swap JSON -> DB here), QuestionService
     progression/     # ProgressionService (fluency scoring, unlock rule)
     entities/        # CreatureService (XP, leveling)
-    save/            # SaveService + SaveBackend (swap localStorage -> DB here)
+    save/            # SaveService + slotted SaveBackend (swap localStorage -> DB here)
     data/            # questions.json seed, creatures, maps (ASCII), vocabulary
-    gfx/             # procedural placeholder pixel art
+    gfx/             # procedural pixel art + animated grass/water canvas textures
     audio/           # WebAudio chiptune engine (original tunes, no files)
-    ui/              # DialogBox
+    ui/              # DialogBox, pixel font setup (Press Start 2P + VT323)
 ```
 
 Two seams are built for the future database:
@@ -94,28 +99,35 @@ after every battle, so progress is never lost. Saves from versions before
 slots existed are migrated into Slot 1 automatically. Delete a save from
 the Continue screen with X.
 
-## Milestone 1 (this build)
+## What's in the current build
 
-Title screen, starter pick, and a 64x48 connected overworld: Meadow Town,
-Sumwood Trail (north fields), Whispering Woods (west), and Lake Lumen (east),
-with three trainers (Finn, Maya, Theo) plus the Addition Gym with Leader Ada.
-Full timing-based battle system with attack animations and damage popups,
-adaptive progression with plateau, localStorage saves, parent dashboard, math
-glossary, original chiptune music.
+- 64x48 connected overworld: Meadow Town, Sumwood Trail (north fields),
+  Whispering Woods (west), and Lake Lumen (east), with three trainers
+  (Finn, Maya, Theo) plus the Addition Gym with Leader Ada
+- Full timing-based battle system with auto-submit answers, attack
+  animations, damage popups, and XtraMath-style remediation
+- Adaptive 12-tier progression that never regresses and plateaus while
+  the student struggles
+- Four named save slots with auto-save after every battle, plus a pause
+  menu (Esc) with how-to-play and controls pages
+- Pixel typography (Press Start 2P + VT323), shaded procedural pixel
+  art, a 3-frame walk cycle, and purpose-driven ambient animation: only
+  tall grass (encounters) and water (future fishing) move
+- Parent dashboard, math glossary, original WebAudio chiptune music
 
-## TODO — Milestone 2+
+## TODO — next milestones
 
 - [ ] More maps: Minus Marsh, Difference Cave, Factor Farm, Product Peaks,
       Quotient Coast, Division Dojo + their gyms
 - [ ] More creatures, evolutions, and catching wild creatures (party growth)
 - [ ] Real asset pipeline (sprite atlas, Tiled tilemaps) replacing
       procedural placeholders
-- [ ] Walk-cycle and battle animations; creature idle bounce
+- [ ] Creature idle animations in battle; richer attack effects per type
 - [ ] Real database integration behind QuestionRepository + SaveBackend
+      (would also let saves sync across devices)
 - [ ] Sound effects polish and per-area music tracks
-- [ ] Multiple child profiles with a profile picker
+- [ ] Fishing at Lake Lumen
 - [ ] Expanded question sets (word problems, missing-addend forms)
 - [ ] Accessibility: font scaling, dyslexia-friendly font option, color-blind
       safe palette, configurable timing for IEP accommodations
 - [ ] Items / creature center instead of auto-heal after battles
-- [ ] Pause menu with save slot management
