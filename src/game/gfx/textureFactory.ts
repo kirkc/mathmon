@@ -495,36 +495,41 @@ export function generateFurnitureTextures(scene: Phaser.Scene): void {
     px(ctx, 2, 27, '#f4ede0', 12, 2);
   });
 
-  makeTexture(scene, 'item-couch', T, T, (ctx) => {
-    px(ctx, 0, 4, '#3a6ac8', 16, 10);
-    px(ctx, 0, 3, '#5a86d8', 16, 2);
-    px(ctx, 1, 7, '#5a86d8', 6, 4); // cushions
-    px(ctx, 9, 7, '#5a86d8', 6, 4);
-    px(ctx, 0, 4, '#2c4f96', 2, 10); // arms
-    px(ctx, 14, 4, '#2c4f96', 2, 10);
-    px(ctx, 1, 14, WOOD.dark, 2, 2);
-    px(ctx, 13, 14, WOOD.dark, 2, 2);
+  // Big furniture is drawn at its real footprint (couch 2x1, rug 3x2...)
+  makeTexture(scene, 'item-couch', 32, T, (ctx) => {
+    px(ctx, 0, 4, '#3a6ac8', 32, 10);
+    px(ctx, 0, 3, '#5a86d8', 32, 2);
+    px(ctx, 3, 7, '#5a86d8', 8, 4); // three cushions
+    px(ctx, 12, 7, '#5a86d8', 8, 4);
+    px(ctx, 21, 7, '#5a86d8', 8, 4);
+    px(ctx, 0, 4, '#2c4f96', 3, 10); // arms
+    px(ctx, 29, 4, '#2c4f96', 3, 10);
+    px(ctx, 2, 14, WOOD.dark, 2, 2);
+    px(ctx, 28, 14, WOOD.dark, 2, 2);
+    px(ctx, 13, 5, '#f8d048', 6, 2); // throw pillow
   });
 
-  makeTexture(scene, 'item-tv', T, T, (ctx) => {
-    px(ctx, 2, 10, WOOD.mid, 12, 4); // stand
-    px(ctx, 2, 10, WOOD.pale, 12, 1);
-    px(ctx, 0, 0, '#26203a', 16, 10); // big screen
-    px(ctx, 1, 1, '#3a4a8c', 14, 8);
-    px(ctx, 2, 2, '#86c860', 6, 4); // battle replay on screen
-    px(ctx, 9, 3, '#e8783c', 3, 3);
-    px(ctx, 3, 6, '#f8f8f0', 8, 1);
-    px(ctx, 1, 1, '#7db8ea', 14, 1); // glare
+  makeTexture(scene, 'item-tv', 32, T, (ctx) => {
+    px(ctx, 4, 11, WOOD.mid, 24, 4); // stand
+    px(ctx, 4, 11, WOOD.pale, 24, 1);
+    px(ctx, 0, 0, '#26203a', 32, 11); // widescreen
+    px(ctx, 1, 1, '#3a4a8c', 30, 9);
+    px(ctx, 3, 2, '#86c860', 12, 6); // battle replay on screen
+    px(ctx, 18, 3, '#e8783c', 4, 4);
+    px(ctx, 24, 4, '#58a8e0', 4, 3);
+    px(ctx, 4, 8, '#f8f8f0', 20, 1);
+    px(ctx, 1, 1, '#7db8ea', 30, 1); // glare
   });
 
-  makeTexture(scene, 'item-fridge', T, T, (ctx) => {
-    px(ctx, 3, 0, '#d0d8e0', 10, 15);
-    px(ctx, 3, 0, '#e8eef4', 10, 1);
-    px(ctx, 3, 5, '#a8b4c0', 10, 1); // freezer line
-    px(ctx, 11, 2, '#6d7689', 1, 2); // handles
-    px(ctx, 11, 7, '#6d7689', 1, 4);
-    px(ctx, 4, 8, '#f2647c', 2, 2); // magnet
-    px(ctx, 3, 15, '#8a93a6', 10, 1);
+  makeTexture(scene, 'item-fridge', T, 24, (ctx) => {
+    px(ctx, 2, 0, '#d0d8e0', 12, 23);
+    px(ctx, 2, 0, '#e8eef4', 12, 1);
+    px(ctx, 2, 8, '#a8b4c0', 12, 1); // freezer line
+    px(ctx, 12, 2, '#6d7689', 1, 4); // handles
+    px(ctx, 12, 11, '#6d7689', 1, 6);
+    px(ctx, 4, 12, '#f2647c', 2, 2); // magnets
+    px(ctx, 7, 15, '#f8d048', 2, 2);
+    px(ctx, 2, 23, '#8a93a6', 12, 1);
   });
 
   makeTexture(scene, 'item-plant', T, T, (ctx) => {
@@ -537,15 +542,17 @@ export function generateFurnitureTextures(scene: Phaser.Scene): void {
     px(ctx, 5, 2, '#6bc878', 2, 1);
   });
 
-  makeTexture(scene, 'item-wardrobe', T, T, (ctx) => {
-    px(ctx, 2, 0, WOOD.mid, 12, 15);
-    px(ctx, 2, 0, WOOD.pale, 12, 1);
-    px(ctx, 3, 1, WOOD.light, 5, 13); // doors
-    px(ctx, 9, 1, WOOD.light, 4, 13);
-    px(ctx, 8, 0, WOOD.dark, 1, 15); // center seam
-    px(ctx, 7, 6, '#f8d048', 1, 2); // knobs
-    px(ctx, 9, 6, '#f8d048', 1, 2);
-    px(ctx, 2, 15, WOOD.dark, 12, 1);
+  makeTexture(scene, 'item-wardrobe', 32, 24, (ctx) => {
+    px(ctx, 1, 0, WOOD.mid, 30, 23);
+    px(ctx, 1, 0, WOOD.pale, 30, 1);
+    px(ctx, 3, 2, WOOD.light, 12, 19); // doors
+    px(ctx, 17, 2, WOOD.light, 12, 19);
+    px(ctx, 16, 0, WOOD.dark, 1, 23); // center seam
+    px(ctx, 13, 9, '#f8d048', 2, 3); // knobs
+    px(ctx, 18, 9, '#f8d048', 2, 3);
+    px(ctx, 4, 3, WOOD.pale, 3, 17); // door grain highlights
+    px(ctx, 25, 3, WOOD.pale, 3, 17);
+    px(ctx, 1, 23, WOOD.dark, 30, 1);
   });
 
   makeTexture(scene, 'item-wallart-1', T, T, (ctx) => {
@@ -581,34 +588,39 @@ export function generateFurnitureTextures(scene: Phaser.Scene): void {
     px(ctx, 11, 11, WOOD.dark, 2, 4);
   });
 
-  makeTexture(scene, 'item-fireplace', T, T, (ctx) => {
-    px(ctx, 1, 0, '#8a8278', 14, 15); // stone surround
-    px(ctx, 1, 0, '#a8a098', 14, 2);
+  makeTexture(scene, 'item-fireplace', 32, T, (ctx) => {
+    px(ctx, 1, 0, '#8a8278', 30, 15); // stone surround
+    px(ctx, 1, 0, '#a8a098', 30, 2);
     for (let y = 2; y < 14; y += 3) {
-      for (let x = 1 + (y % 2); x < 15; x += 4) px(ctx, x, y, '#6d665c', 1, 1);
+      for (let x = 1 + (y % 2) * 2; x < 31; x += 4) px(ctx, x, y, '#6d665c', 1, 1);
     }
-    px(ctx, 4, 5, '#26203a', 8, 9); // firebox
-    px(ctx, 5, 9, '#f04830', 6, 4); // fire
-    px(ctx, 6, 7, '#f8841c', 4, 4);
-    px(ctx, 7, 6, '#f8d048', 2, 3);
-    px(ctx, 5, 13, WOOD.dark, 6, 1); // log
+    px(ctx, 8, 4, '#26203a', 16, 10); // firebox
+    px(ctx, 10, 9, '#f04830', 12, 4); // fire
+    px(ctx, 12, 7, '#f8841c', 8, 4);
+    px(ctx, 14, 5, '#f8d048', 4, 4);
+    px(ctx, 10, 13, WOOD.dark, 12, 1); // log
+    px(ctx, 3, 1, '#f8d048', 4, 1); // mantel trinket
+    px(ctx, 26, 1, '#3a6ac8', 2, 1);
   });
 
-  makeTexture(scene, 'item-table', T, T, (ctx) => {
-    px(ctx, 1, 4, WOOD.light, 14, 7);
-    px(ctx, 1, 4, WOOD.pale, 14, 1);
-    px(ctx, 2, 11, WOOD.dark, 2, 4);
-    px(ctx, 12, 11, WOOD.dark, 2, 4);
-    px(ctx, 6, 5, '#f8f8f0', 4, 3); // doily
-    px(ctx, 7, 6, '#f2647c', 2, 1); // little flower
+  makeTexture(scene, 'item-table', 32, T, (ctx) => {
+    px(ctx, 1, 4, WOOD.light, 30, 8);
+    px(ctx, 1, 4, WOOD.pale, 30, 1);
+    px(ctx, 2, 12, WOOD.dark, 3, 4);
+    px(ctx, 27, 12, WOOD.dark, 3, 4);
+    px(ctx, 11, 5, '#f8f8f0', 10, 5); // table runner
+    px(ctx, 14, 6, '#f2647c', 2, 2); // little flower
+    px(ctx, 15, 6, '#f8d048', 1, 1);
+    px(ctx, 4, 6, '#7db8ea', 3, 3); // juice cup
   });
 
-  makeTexture(scene, 'item-lamp', T, T, (ctx) => {
-    px(ctx, 4, 0, '#f8d048', 8, 5); // shade
-    px(ctx, 3, 4, '#e0b830', 10, 1);
-    px(ctx, 5, 1, '#fff3b0', 3, 3); // glow
-    px(ctx, 7, 5, WOOD.dark, 2, 8); // pole
-    px(ctx, 5, 13, WOOD.dark, 6, 2); // base
+  makeTexture(scene, 'item-lamp', T, 24, (ctx) => {
+    px(ctx, 3, 0, '#f8d048', 10, 7); // shade
+    px(ctx, 2, 6, '#e0b830', 12, 1);
+    px(ctx, 5, 1, '#fff3b0', 4, 4); // glow
+    px(ctx, 7, 7, WOOD.dark, 2, 14); // pole
+    px(ctx, 4, 21, WOOD.dark, 8, 3); // base
+    px(ctx, 4, 21, WOOD.mid, 8, 1);
   });
 
   makeTexture(scene, 'item-doormat', T, T, (ctx) => {
@@ -636,11 +648,18 @@ export function generateFurnitureTextures(scene: Phaser.Scene): void {
     px(ctx, 9, 2, '#f8f8f0', 3, 2); // flashcards
   });
 
-  makeTexture(scene, 'item-rug', T, T, (ctx) => {
-    px(ctx, 1, 2, '#c84848', 14, 12);
-    px(ctx, 2, 3, '#e06060', 12, 10);
-    px(ctx, 4, 5, '#f2a0a0', 8, 6);
-    px(ctx, 6, 7, '#f8d048', 4, 2); // center medallion
+  makeTexture(scene, 'item-rug', 48, 32, (ctx) => {
+    // The biggest item in the catalog: a 3x2-tile statement rug.
+    px(ctx, 1, 1, '#a83232', 46, 30);
+    px(ctx, 3, 3, '#c84848', 42, 26);
+    px(ctx, 6, 6, '#e06060', 36, 20);
+    px(ctx, 10, 9, '#f2a0a0', 28, 14);
+    // corner diamonds + center medallion
+    for (const [cx, cy] of [[4, 4], [42, 4], [4, 26], [42, 26]] as const) {
+      px(ctx, cx, cy, '#f8d048', 2, 2);
+    }
+    px(ctx, 20, 13, '#f8d048', 8, 6);
+    px(ctx, 22, 15, '#c84848', 4, 2);
   });
 }
 

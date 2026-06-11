@@ -204,7 +204,7 @@ export class BattleScene extends Phaser.Scene {
     this.promptText.setText(`${this.question.prompt} = ?`).setVisible(true);
     this.answerText.setVisible(true).setColor('#3a6ac8');
     this.renderInput();
-    this.progressText.setText(`Question ${this.engine.questionsAsked + 1} of ${this.engine.questionsTotal}`).setVisible(true);
+    this.progressText.setText(`Question ${this.engine.questionsAsked + 1}`).setVisible(true);
     this.timerBarBg.setVisible(true);
     this.timerBar.setVisible(true).setFillStyle(0x3f9c4e);
     this.timerBar.width = W - 42;

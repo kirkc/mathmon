@@ -16,7 +16,6 @@ export interface TurnResolution {
   playerHpAfter: number;
   enemyHpAfter: number;
   questionsAsked: number;
-  questionsTotal: number;
   battleOver: boolean;
   /** Defined when battleOver. */
   playerWon?: boolean;
@@ -34,12 +33,10 @@ export interface TurnResolution {
  *  - incorrect: player misses; enemy high dmg
  *  - timeout: player misses; enemy high dmg
  *
- * Battle ends when either creature faints or all questions are used.
- * If questions run out with both standing, the side with the higher
- * remaining HP fraction wins; ties go to the player (forgiving by design).
+ * Battles run until one creature faints — questions keep coming as long
+ * as both sides are standing. Tougher opponents simply have more HP.
  */
 export class BattleEngine {
-  readonly questionsTotal: number;
   questionsAsked = 0;
 
   constructor(
@@ -47,9 +44,7 @@ export class BattleEngine {
     readonly player: Combatant,
     readonly enemy: Combatant,
     private readonly rng: () => number = Math.random,
-  ) {
-    this.questionsTotal = battleConfig.questionsPerBattle[battleType];
-  }
+  ) {}
 
   resolveAnswer(outcome: QuestionOutcome): TurnResolution {
     this.questionsAsked += 1;
@@ -121,11 +116,6 @@ export class BattleEngine {
     } else if (this.player.currentHp === 0) {
       battleOver = true;
       playerWon = false;
-    } else if (this.questionsAsked >= this.questionsTotal) {
-      battleOver = true;
-      playerWon =
-        this.player.currentHp / this.player.maxHp >=
-        this.enemy.currentHp / this.enemy.maxHp;
     }
 
     return {
@@ -137,7 +127,6 @@ export class BattleEngine {
       playerHpAfter: this.player.currentHp,
       enemyHpAfter: this.enemy.currentHp,
       questionsAsked: this.questionsAsked,
-      questionsTotal: this.questionsTotal,
       battleOver,
       playerWon,
       feedback,

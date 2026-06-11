@@ -17,13 +17,6 @@ export const battleConfig = {
     hardTimeoutMs: 20000,
   },
 
-  /** How many math questions each battle type asks. */
-  questionsPerBattle: {
-    wild: 4,
-    trainer: 8,
-    gym: 20,
-  } satisfies Record<BattleType, number>,
-
   /** Damage the player's creature deals. */
   playerDamage: {
     high: 14,

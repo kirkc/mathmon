@@ -573,27 +573,31 @@ export class OverworldScene extends Phaser.Scene {
       ...HOUSE_ITEMS.filter((i) => i.mapKey === this.map.key && save.house.ownedItems.includes(i.id)),
     ];
     for (const item of placed) {
+      const w = item.tilesW ?? 1;
+      const h = item.tilesH ?? 1;
       if (item.textureKey) {
         const scale = 'scale' in item && item.scale ? item.scale : 1;
-        const isBed = item.textureKey === 'item-bed';
+        // Bottom-center anchor: tall art (fridge, wardrobe, lamp) rises
+        // naturally above its footprint, and southern items occlude
+        // northern ones like a proper top-down interior.
         const img = this.add
-          .image(
-            item.tileX * TILE + TILE / 2,
-            // The bed is two tiles tall; center it over both tiles.
-            item.tileY * TILE + (isBed ? TILE : TILE / 2),
-            item.textureKey,
-          )
+          .image(item.tileX * TILE + (w * TILE) / 2, (item.tileY + h) * TILE, item.textureKey)
+          .setOrigin(0.5, 1)
           .setScale(scale)
-          .setDepth(item.solid ? 8 : 2);
+          .setDepth(item.solid ? 8 + (item.tileY + h) * 0.01 : 2);
         this.itemSprites.push(img);
       }
-      const key = `${item.tileX},${item.tileY}`;
-      if (item.solid) this.itemSolids.add(key);
-      this.itemAt.set(key, {
-        name: 'name' in item ? item.name : undefined,
-        examine: item.examine,
-        isComputer: 'isComputer' in item ? item.isComputer : undefined,
-      });
+      for (let dx = 0; dx < w; dx++) {
+        for (let dy = 0; dy < h; dy++) {
+          const key = `${item.tileX + dx},${item.tileY + dy}`;
+          if (item.solid) this.itemSolids.add(key);
+          this.itemAt.set(key, {
+            name: 'name' in item ? item.name : undefined,
+            examine: item.examine,
+            isComputer: 'isComputer' in item ? item.isComputer : undefined,
+          });
+        }
+      }
     }
   }
 
@@ -619,8 +623,16 @@ export class OverworldScene extends Phaser.Scene {
     this.time.addEvent({ delay: 1100, loop: true, callback: () => this.companionHop() });
   }
 
+  private companionHopStartedAt = 0;
+
   private companionHop(): void {
-    if (!this.companion || this.companionHopping || this.paused || this.shopOpen) return;
+    if (!this.companion || this.paused || this.shopOpen) return;
+    // Failsafe: if a hop callback ever goes missing, recover after 1.5s
+    // instead of freezing the pet forever.
+    if (this.companionHopping && this.time.now - this.companionHopStartedAt < 1500) return;
+    this.companionHopping = true;
+    this.companionHopStartedAt = this.time.now;
+
     const dirs = Phaser.Utils.Array.Shuffle([
       [0, -1], [0, 1], [-1, 0], [1, 0],
     ] as Array<[number, number]>);
@@ -638,32 +650,34 @@ export class OverworldScene extends Phaser.Scene {
       }
     }
 
-    this.companionHopping = true;
     const sprite = this.companion;
-    const hopDone = () => {
-      this.companionHopping = false;
-    };
-    // Little vertical hop either way — it's just happy to be home.
-    this.tweens.add({ targets: sprite, y: sprite.y - 7, duration: 130, yoyo: true, ease: 'Quad.easeOut' });
+    const fromX = sprite.x;
+    const fromY = sprite.y;
+    // Boxed in by furniture? Hop in place — still alive, still happy.
+    const toX = target ? target[0] * TILE + TILE / 2 : fromX;
+    const toY = target ? target[1] * TILE + TILE / 2 : fromY;
     if (target) {
       if (target[0] !== this.companionTile.x) sprite.setFlipX(target[0] > this.companionTile.x);
       this.companionTile = { x: target[0], y: target[1] };
-      this.tweens.add({
-        targets: sprite,
-        x: target[0] * TILE + TILE / 2,
-        duration: 260,
-        onComplete: hopDone,
-      });
-      this.tweens.add({
-        targets: sprite,
-        y: target[1] * TILE + TILE / 2,
-        duration: 260,
-        delay: 130,
-        onComplete: () => undefined,
-      });
-    } else {
-      this.time.delayedCall(300, hopDone);
     }
+
+    // One tween drives the whole hop (position + arc), so there is exactly
+    // one onComplete and the loop can never wedge on conflicting tweens.
+    const progress = { t: 0 };
+    this.tweens.add({
+      targets: progress,
+      t: 1,
+      duration: 300,
+      ease: 'Sine.easeInOut',
+      onUpdate: () => {
+        sprite.x = fromX + (toX - fromX) * progress.t;
+        sprite.y = fromY + (toY - fromY) * progress.t - Math.sin(progress.t * Math.PI) * 9;
+      },
+      onComplete: () => {
+        sprite.setPosition(toX, toY);
+        this.companionHopping = false;
+      },
+    });
   }
 
   // ------------------------------------------------------- furniture shop

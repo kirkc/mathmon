@@ -35,8 +35,8 @@ npm run build    # typecheck + production build to dist/
 
 ## How battles work
 
-Each battle asks a fixed number of questions (wild 4, trainer 8, gym 20).
-Speed and correctness decide the exchange:
+Battles run until one creature faints — tougher opponents simply have more
+HP (wild < trainer < gym leader). Speed and correctness decide each exchange:
 
 | Outcome | Player attack | Enemy attack |
 | --- | --- | --- |
