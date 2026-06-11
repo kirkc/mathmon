@@ -1,9 +1,10 @@
 import Phaser from 'phaser';
 import { worldConfig } from '../../config/worldConfig';
 import { VOCABULARY } from '../data/vocabulary';
+import { FONT_BODY, FONT_HEADING } from '../ui/fonts';
 
-const MONO = '"Courier New", monospace';
-const PAGE_SIZE = 5;
+const MONO = FONT_BODY;
+const PAGE_SIZE = 4;
 
 /**
  * Math vocabulary review screen. Kept outside battles on purpose —
@@ -28,21 +29,21 @@ export class GlossaryScene extends Phaser.Scene {
     const { gameWidth: W, gameHeight: H } = worldConfig;
     this.add.rectangle(0, 0, W, H, 0x1a2a5c).setOrigin(0);
     this.add
-      .text(W / 2, 14, 'MATH GLOSSARY', { fontFamily: MONO, fontSize: '16px', fontStyle: 'bold', color: '#f8d048' })
+      .text(W / 2, 12, 'MATH GLOSSARY', { fontFamily: FONT_HEADING, fontSize: '13px', color: '#f8d048' })
       .setOrigin(0.5, 0);
 
-    this.body = this.add.text(20, 44, '', {
+    this.body = this.add.text(20, 42, '', {
       fontFamily: MONO,
-      fontSize: '11px',
+      fontSize: '17px',
       color: '#ffffff',
       wordWrap: { width: W - 40 },
-      lineSpacing: 3,
+      lineSpacing: 0,
     });
     this.pageText = this.add
-      .text(W / 2, H - 30, '', { fontFamily: MONO, fontSize: '10px', color: '#c0d0f8' })
+      .text(W / 2, H - 30, '', { fontFamily: MONO, fontSize: '14px', color: '#c0d0f8' })
       .setOrigin(0.5);
     this.add
-      .text(W / 2, H - 14, '← → pages · ESC to return', { fontFamily: MONO, fontSize: '10px', color: '#8a93a6' })
+      .text(W / 2, H - 14, '← → pages · ESC to return', { fontFamily: MONO, fontSize: '14px', color: '#8a93a6' })
       .setOrigin(0.5);
 
     this.renderPage();

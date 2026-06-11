@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { worldConfig } from '../../config/worldConfig';
+import { FONT_BODY } from './fonts';
 
 /**
  * Classic bottom-screen dialog box. Feed it pages of text; the player
@@ -27,18 +28,18 @@ export class DialogBox {
       .setOrigin(0)
       .setStrokeStyle(1, 0xb0b8d0);
 
-    this.text = scene.add.text(18, y + 12, '', {
-      fontFamily: '"Courier New", monospace',
-      fontSize: '13px',
+    this.text = scene.add.text(18, y + 10, '', {
+      fontFamily: FONT_BODY,
+      fontSize: '19px',
       color: '#26203a',
       wordWrap: { width: gameWidth - 40 },
-      lineSpacing: 4,
+      lineSpacing: 0,
     });
 
     this.moreArrow = scene.add
       .text(gameWidth - 26, y + boxH - 18, '▼', {
-        fontFamily: '"Courier New", monospace',
-        fontSize: '11px',
+        fontFamily: FONT_BODY,
+        fontSize: '14px',
         color: '#c83a3a',
       })
       .setVisible(false);

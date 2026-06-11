@@ -1,12 +1,13 @@
 import Phaser from 'phaser';
+import { waitForFonts } from '../ui/fonts';
 
-/** Minimal boot: jump straight to preload. */
+/** Boot: wait for the pixel webfonts so no scene renders fallback text. */
 export class BootScene extends Phaser.Scene {
   constructor() {
     super('BootScene');
   }
 
   create(): void {
-    this.scene.start('PreloadScene');
+    void waitForFonts().then(() => this.scene.start('PreloadScene'));
   }
 }

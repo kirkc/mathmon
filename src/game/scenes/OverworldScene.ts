@@ -6,15 +6,15 @@ import { encounterService } from '../battle/EncounterService';
 import { CREATURE_SPECIES } from '../data/creatures';
 import { ENCOUNTER_TILES, MAPS, SOLID_TILES, type MapDefinition, type NpcDefinition } from '../data/maps';
 import { creatureService } from '../entities/CreatureService';
-import { TILE_TEXTURES } from '../gfx/textureFactory';
+import { startTileAnimations, TILE_TEXTURES } from '../gfx/textureFactory';
 import { progressionService, saveService } from '../services';
+import { FONT_BODY } from '../ui/fonts';
 import { DialogBox } from '../ui/DialogBox';
 import type { BattlePayload } from './BattleScene';
 
 type Facing = 'up' | 'down' | 'left' | 'right';
 
 const TILE = worldConfig.tileSize;
-const MONO = '"Courier New", monospace';
 
 /**
  * Top-down grid-movement overworld. Reads the ASCII map, renders tiles,
@@ -60,6 +60,7 @@ export class OverworldScene extends Phaser.Scene {
 
     this.renderMap();
     this.spawnNpcs();
+    startTileAnimations(this);
 
     this.player = this.add
       .image(this.playerTile.x * TILE + TILE / 2, this.playerTile.y * TILE + TILE / 2, this.playerTexture())
@@ -74,7 +75,7 @@ export class OverworldScene extends Phaser.Scene {
     this.dialog = new DialogBox(this);
 
     this.hudText = this.add
-      .text(8, 6, '', { fontFamily: MONO, fontSize: '10px', color: '#ffffff', backgroundColor: '#26203acc', padding: { x: 6, y: 4 } })
+      .text(8, 6, '', { fontFamily: FONT_BODY, fontSize: '15px', color: '#ffffff', backgroundColor: '#26203acc', padding: { x: 6, y: 4 }, lineSpacing: -2 })
       .setScrollFactor(0)
       .setDepth(900);
     this.refreshHud();
@@ -177,7 +178,8 @@ export class OverworldScene extends Phaser.Scene {
     if (!this.isWalkable(nx, ny)) return;
 
     this.moving = true;
-    this.stepFrame = this.stepFrame === 0 ? 1 : 0;
+    // Alternate stride frames (1 = left foot, 2 = right foot) each step.
+    this.stepFrame = this.stepFrame === 1 ? 2 : 1;
     this.playerTile = { x: nx, y: ny };
     this.player.setTexture(this.playerTexture(true));
 

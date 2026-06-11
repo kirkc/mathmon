@@ -3,8 +3,9 @@ import { LEVELS } from '../../config/progressionConfig';
 import { worldConfig } from '../../config/worldConfig';
 import { CREATURE_SPECIES } from '../data/creatures';
 import { progressionService, saveService } from '../services';
+import { FONT_BODY, FONT_HEADING } from '../ui/fonts';
 
-const MONO = '"Courier New", monospace';
+const MONO = FONT_BODY;
 
 /**
  * Parent dashboard: learning stats per tier, current focus, and overall
@@ -25,14 +26,14 @@ export class DashboardScene extends Phaser.Scene {
     const { gameWidth: W, gameHeight: H } = worldConfig;
     this.add.rectangle(0, 0, W, H, 0x1a2a5c).setOrigin(0);
     this.add
-      .text(W / 2, 14, 'PARENT DASHBOARD', { fontFamily: MONO, fontSize: '16px', fontStyle: 'bold', color: '#f8d048' })
+      .text(W / 2, 12, 'PARENT DASHBOARD', { fontFamily: FONT_HEADING, fontSize: '13px', color: '#f8d048' })
       .setOrigin(0.5, 0);
 
     const save = saveService.getData();
     if (!save) {
       this.add
         .text(W / 2, H / 2, 'No save data yet.\nStart a New Game first!', {
-          fontFamily: MONO, fontSize: '13px', color: '#ffffff', align: 'center',
+          fontFamily: MONO, fontSize: '19px', color: '#ffffff', align: 'center',
         })
         .setOrigin(0.5);
       this.addReturnHint();
@@ -48,7 +49,6 @@ export class DashboardScene extends Phaser.Scene {
 
     const leftCol = [
       `Student: ${save.player.name} · ${species ? `${species.name} Lv.${lead.level}` : 'no creature'}`,
-      ``,
       `CURRENT FOCUS: ${level.levelName}`,
       ``,
       `Questions attempted:  ${stats.attemptedCount}`,
@@ -66,7 +66,7 @@ export class DashboardScene extends Phaser.Scene {
       `Badges: ${save.badges.length > 0 ? save.badges.join(', ') : 'none yet'}`,
     ].join('\n');
 
-    this.add.text(16, 38, leftCol, { fontFamily: MONO, fontSize: '10px', color: '#ffffff', lineSpacing: 3 });
+    this.add.text(16, 36, leftCol, { fontFamily: MONO, fontSize: '15px', color: '#ffffff', lineSpacing: 0 });
 
     // Right column: learning ladder with unlock status.
     const ladderLines = LEVELS.map((l) => {
@@ -74,18 +74,18 @@ export class DashboardScene extends Phaser.Scene {
       const marker = l.levelNumber === save.progression.currentLevelNumber ? '▶' : unlocked ? '✓' : '·';
       return `${marker} ${l.levelName}`;
     });
-    this.add.text(W - 190, 40, ['LEARNING LADDER', '', ...ladderLines].join('\n'), {
+    this.add.text(W - 180, 36, ['LEARNING LADDER', '', ...ladderLines].join('\n'), {
       fontFamily: MONO,
-      fontSize: '10px',
+      fontSize: '14px',
       color: '#c0d0f8',
-      lineSpacing: 3,
+      lineSpacing: 0,
     });
 
     // What's left before the next unlock.
     const check = previewUnlockReasons();
     if (check.length > 0) {
-      this.add.text(16, H - 36, `Next unlock needs: ${check.join(' · ')}`, {
-        fontFamily: MONO, fontSize: '9px', color: '#f8d048', wordWrap: { width: W - 32 },
+      this.add.text(16, H - 38, `Next unlock needs: ${check.join(' · ')}`, {
+        fontFamily: MONO, fontSize: '14px', color: '#f8d048', wordWrap: { width: W - 32 },
       });
     }
 
@@ -95,7 +95,7 @@ export class DashboardScene extends Phaser.Scene {
   private addReturnHint(): void {
     const { gameWidth: W, gameHeight: H } = worldConfig;
     this.add
-      .text(W / 2, H - 14, 'ESC or ENTER to return', { fontFamily: MONO, fontSize: '10px', color: '#8a93a6' })
+      .text(W / 2, H - 13, 'ESC or ENTER to return', { fontFamily: MONO, fontSize: '14px', color: '#8a93a6' })
       .setOrigin(0.5);
     this.input.keyboard?.once('keydown-ESC', () => this.scene.start(this.from));
     this.input.keyboard?.once('keydown-ENTER', () => this.scene.start(this.from));

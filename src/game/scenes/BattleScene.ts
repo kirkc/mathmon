@@ -8,6 +8,7 @@ import type { MathQuestion } from '../math/types';
 import { ProgressionService } from '../progression/ProgressionService';
 import type { CreatureInstance } from '../save/saveTypes';
 import { battleService, progressionService, questionService, saveService } from '../services';
+import { FONT_BODY, FONT_HEADING } from '../ui/fonts';
 
 export interface BattlePayload {
   battleType: BattleType;
@@ -21,7 +22,8 @@ export interface BattlePayload {
 
 type Phase = 'intro' | 'question' | 'remediate' | 'resolve' | 'end';
 
-const MONO = '"Courier New", monospace';
+const MONO = FONT_BODY;
+const HEAD = FONT_HEADING;
 const W = worldConfig.gameWidth;
 const H = worldConfig.gameHeight;
 
@@ -100,41 +102,53 @@ export class BattleScene extends Phaser.Scene {
   // -------------------------------------------------------------- layout
 
   private buildLayout(): void {
-    // backdrop
-    this.add.rectangle(0, 0, W, H, 0x9adcf0).setOrigin(0);
+    // backdrop: layered sky, drifting clouds, grounded horizon
+    this.add.rectangle(0, 0, W, H * 0.3, 0xb4e8f6).setOrigin(0);
+    this.add.rectangle(0, H * 0.3, W, H * 0.25, 0x9adcf0).setOrigin(0);
+    for (const [cx, cy, cw] of [[80, 38, 70], [300, 24, 90], [430, 52, 60]] as const) {
+      this.add.ellipse(cx, cy, cw, 18, 0xffffff, 0.9);
+      this.add.ellipse(cx + cw * 0.3, cy + 6, cw * 0.7, 14, 0xffffff, 0.9);
+    }
+    this.add.rectangle(0, H * 0.55 - 4, W, 4, 0x6fae50).setOrigin(0); // horizon
     this.add.rectangle(0, H * 0.55, W, H * 0.45, 0x86c860).setOrigin(0);
     this.add.ellipse(W - 110, 176, 140, 32, 0x74b850); // enemy ground pad
-    this.add.ellipse(115, 250, 150, 34, 0x74b850); // player ground pad
+    this.add.ellipse(W - 110, 178, 120, 24, 0x68a847);
+    this.add.ellipse(120, 206, 140, 28, 0x74b850); // player ground pad
+    this.add.ellipse(120, 208, 120, 22, 0x68a847);
 
     // Sprites are 16 art px at 2x texture scale, so display size is
     // 16 * 2 * scale — keep panels clear of those bounds.
     const enemySpecies = CREATURE_SPECIES[this.payload.enemy.speciesId];
     this.enemySprite = this.add.image(W - 110, 120, enemySpecies.spriteKey).setScale(4);
     const playerSpecies = CREATURE_SPECIES[this.playerCreature.speciesId];
-    this.playerSprite = this.add.image(115, 205, playerSpecies.spriteKey).setScale(5).setFlipX(true);
+    // Scale 4 with center y156: the art's transparent top rows tuck under
+    // the info panel and the feet sit on the ground pad, fully visible
+    // above the question box.
+    this.playerSprite = this.add.image(120, 156, playerSpecies.spriteKey).setScale(4).setFlipX(true);
 
     // Each creature's info panel sits on ITS side: enemy top-right above the
     // enemy, player mid-left above the player.
     this.buildPanel(W - 200, 8, 190, 44);
-    this.add.text(W - 192, 14, this.enemyDisplayName(), { fontFamily: MONO, fontSize: '11px', color: '#26203a' });
-    this.add.rectangle(W - 192, 32, 150, 8, 0xd0d0c0).setOrigin(0);
-    this.enemyHpBar = this.add.rectangle(W - 192, 32, 150, 8, 0x3f9c4e).setOrigin(0);
-    this.enemyHpText = this.add.text(W - 192, 42, '', { fontFamily: MONO, fontSize: '9px', color: '#26203a' });
+    this.add.text(W - 192, 11, this.enemyDisplayName(), { fontFamily: MONO, fontSize: '16px', color: '#26203a' });
+    this.add.rectangle(W - 192, 30, 150, 8, 0xd0d0c0).setOrigin(0);
+    this.enemyHpBar = this.add.rectangle(W - 192, 30, 150, 8, 0x3f9c4e).setOrigin(0);
+    this.enemyHpText = this.add.text(W - 192, 38, '', { fontFamily: MONO, fontSize: '14px', color: '#26203a' });
 
     this.buildPanel(10, 70, 190, 50);
-    this.add.text(18, 76, `${playerSpecies.name} Lv.${this.playerCreature.level}`, {
+    this.add.text(18, 73, `${playerSpecies.name} Lv.${this.playerCreature.level}`, {
       fontFamily: MONO,
-      fontSize: '11px',
+      fontSize: '16px',
       color: '#26203a',
     });
     this.add.rectangle(18, 94, 150, 8, 0xd0d0c0).setOrigin(0);
     this.playerHpBar = this.add.rectangle(18, 94, 150, 8, 0x3f9c4e).setOrigin(0);
-    this.playerHpText = this.add.text(18, 104, '', { fontFamily: MONO, fontSize: '9px', color: '#26203a' });
+    this.playerHpText = this.add.text(18, 102, '', { fontFamily: MONO, fontSize: '14px', color: '#26203a' });
 
     // progress counter (top-left, away from the enemy panel)
     this.progressText = this.add
-      .text(10, 12, '', { fontFamily: MONO, fontSize: '11px', color: '#26203a', backgroundColor: '#f8f8f0', padding: { x: 6, y: 2 } })
-      .setOrigin(0, 0);
+      .text(10, 10, '', { fontFamily: MONO, fontSize: '16px', color: '#26203a', backgroundColor: '#f8f8f0', padding: { x: 6, y: 2 } })
+      .setOrigin(0, 0)
+      .setVisible(false);
 
     // timer bar
     this.timerBarBg = this.add.rectangle(20, 206, W - 40, 6, 0x26203a).setOrigin(0).setVisible(false);
@@ -143,17 +157,17 @@ export class BattleScene extends Phaser.Scene {
     // question/message panel (bottom)
     this.buildPanel(6, 216, W - 12, H - 222);
     this.promptText = this.add
-      .text(W / 2, 246, '', { fontFamily: MONO, fontSize: '26px', fontStyle: 'bold', color: '#26203a' })
+      .text(W / 2, 244, '', { fontFamily: HEAD, fontSize: '20px', color: '#26203a' })
       .setOrigin(0.5, 0);
     this.answerText = this.add
-      .text(W / 2, 280, '', { fontFamily: MONO, fontSize: '24px', fontStyle: 'bold', color: '#3a6ac8' })
+      .text(W / 2, 278, '', { fontFamily: HEAD, fontSize: '20px', color: '#3a6ac8' })
       .setOrigin(0.5, 0);
-    this.messageText = this.add.text(18, 224, '', {
+    this.messageText = this.add.text(18, 222, '', {
       fontFamily: MONO,
-      fontSize: '12px',
+      fontSize: '18px',
       color: '#26203a',
       wordWrap: { width: W - 40 },
-      lineSpacing: 3,
+      lineSpacing: 0,
     });
 
     this.refreshHpBars();
@@ -190,7 +204,7 @@ export class BattleScene extends Phaser.Scene {
     this.promptText.setText(`${this.question.prompt} = ?`).setVisible(true);
     this.answerText.setVisible(true).setColor('#3a6ac8');
     this.renderInput();
-    this.progressText.setText(`Question ${this.engine.questionsAsked + 1} of ${this.engine.questionsTotal}`);
+    this.progressText.setText(`Question ${this.engine.questionsAsked + 1} of ${this.engine.questionsTotal}`).setVisible(true);
     this.timerBarBg.setVisible(true);
     this.timerBar.setVisible(true).setFillStyle(0x3f9c4e);
     this.timerBar.width = W - 42;
@@ -452,9 +466,8 @@ export class BattleScene extends Phaser.Scene {
   private damagePopup(x: number, y: number, label: string, color: string): void {
     const text = this.add
       .text(x, y, label, {
-        fontFamily: MONO,
-        fontSize: '18px',
-        fontStyle: 'bold',
+        fontFamily: HEAD,
+        fontSize: '13px',
         color,
         stroke: '#f8f8f0',
         strokeThickness: 4,

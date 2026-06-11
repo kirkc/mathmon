@@ -3,11 +3,14 @@ import { worldConfig } from '../../config/worldConfig';
 import { chiptune } from '../audio/ChiptunePlayer';
 import { CREATURE_SPECIES, STARTER_IDS } from '../data/creatures';
 import { creatureService } from '../entities/CreatureService';
+import { startTileAnimations } from '../gfx/textureFactory';
 import { saveService } from '../services';
+import { FONT_BODY, FONT_HEADING } from '../ui/fonts';
 
 type Phase = 'menu' | 'starter';
 
-const MONO = '"Courier New", monospace';
+const MONO = FONT_BODY;
+const HEAD = FONT_HEADING;
 
 /**
  * Title screen: continue / new game (with starter pick) / dashboard /
@@ -39,26 +42,35 @@ export class TitleScene extends Phaser.Scene {
       this.add.image(x, H - 64, 'tile-tallgrass').setOrigin(0).setScale(1);
     }
     for (const [i, id] of (['embercub', 'leafloo', 'aquabbit'] as const).entries()) {
-      this.add.image(120 + i * 120, H - 76, CREATURE_SPECIES[id].spriteKey).setScale(3);
+      const mon = this.add.image(120 + i * 120, H - 76, CREATURE_SPECIES[id].spriteKey).setScale(3);
+      this.tweens.add({
+        targets: mon,
+        y: mon.y - 3,
+        duration: 900 + i * 150,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+      });
     }
 
     this.add
-      .text(W / 2, 58, 'MathMon Quest', {
-        fontFamily: MONO,
-        fontSize: '34px',
-        fontStyle: 'bold',
+      .text(W / 2, 54, 'MathMon Quest', {
+        fontFamily: HEAD,
+        fontSize: '24px',
         color: '#f8d048',
         stroke: '#26203a',
         strokeThickness: 6,
       })
       .setOrigin(0.5);
     this.add
-      .text(W / 2, 90, 'Math power. Tiny monsters. Big adventure.', {
+      .text(W / 2, 88, 'Math power. Tiny monsters. Big adventure.', {
         fontFamily: MONO,
-        fontSize: '12px',
+        fontSize: '18px',
         color: '#c0d0f8',
       })
       .setOrigin(0.5);
+
+    startTileAnimations(this);
 
     this.menuItems = saveService.hasSave()
       ? ['Continue', 'New Game', 'Parent Dashboard', 'Math Glossary']
@@ -66,9 +78,9 @@ export class TitleScene extends Phaser.Scene {
 
     this.menuItems.forEach((item, i) => {
       const t = this.add
-        .text(W / 2, 130 + i * 24, item, {
+        .text(W / 2, 122 + i * 24, item, {
           fontFamily: MONO,
-          fontSize: '15px',
+          fontSize: '22px',
           color: '#ffffff',
         })
         .setOrigin(0.5);
@@ -138,8 +150,8 @@ export class TitleScene extends Phaser.Scene {
     const overlay = this.add.rectangle(0, 0, W, H, 0x1a1424, 0.92).setOrigin(0);
     const title = this.add
       .text(W / 2, 36, 'Choose your partner!', {
-        fontFamily: MONO,
-        fontSize: '18px',
+        fontFamily: HEAD,
+        fontSize: '14px',
         color: '#f8d048',
       })
       .setOrigin(0.5);
@@ -152,12 +164,12 @@ export class TitleScene extends Phaser.Scene {
       card.setName(`starter-card-${i}`);
       const img = this.add.image(x, 110, species.spriteKey).setScale(4);
       const name = this.add
-        .text(x, 160, species.name, { fontFamily: MONO, fontSize: '13px', color: '#ffffff' })
+        .text(x, 160, species.name, { fontFamily: MONO, fontSize: '19px', color: '#ffffff' })
         .setOrigin(0.5);
       const type = this.add
-        .text(x, 176, `${species.type} · ${species.personality}`, {
+        .text(x, 177, `${species.type} · ${species.personality}`, {
           fontFamily: MONO,
-          fontSize: '10px',
+          fontSize: '15px',
           color: '#c0d0f8',
         })
         .setOrigin(0.5);
@@ -167,7 +179,7 @@ export class TitleScene extends Phaser.Scene {
     const desc = this.add
       .text(W / 2, 230, '', {
         fontFamily: MONO,
-        fontSize: '11px',
+        fontSize: '17px',
         color: '#ffffff',
         wordWrap: { width: W - 80 },
         align: 'center',
@@ -177,7 +189,7 @@ export class TitleScene extends Phaser.Scene {
     const hint = this.add
       .text(W / 2, H - 24, '← → to choose · ENTER to confirm · ESC to go back', {
         fontFamily: MONO,
-        fontSize: '10px',
+        fontSize: '15px',
         color: '#8a93a6',
       })
       .setOrigin(0.5);
