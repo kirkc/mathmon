@@ -46,7 +46,7 @@ export class TitleScene extends Phaser.Scene {
     }
 
     this.add
-      .text(W / 2, 54, 'MathMon Quest', {
+      .text(W / 2, 54, 'MathMon', {
         fontFamily: HEAD,
         fontSize: '24px',
         color: '#f8d048',

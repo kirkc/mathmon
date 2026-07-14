@@ -1,5 +1,5 @@
 /**
- * Original creature roster for MathMon Quest. All names, types, and designs
+ * Original creature roster for MathMon. All names, types, and designs
  * are original to this project.
  */
 export interface CreatureSpecies {

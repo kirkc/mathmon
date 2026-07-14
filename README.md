@@ -1,4 +1,4 @@
-# MathMon Quest
+# MathMon
 
 A browser-based, GBA-inspired, top-down creature-collecting math RPG for grade
 school homeschool students. Think *XtraMath* and a classic handheld monster
@@ -7,7 +7,7 @@ trainers and gym leaders — but every battle is resolved through **math fluency
 questions** instead of attack menus. All creatures, names, maps, music, and UI
 are original to this project.
 
-**▶ Play it: https://kirkc.github.io/mathmon-quest/**
+**▶ Play it: https://kirkc.github.io/mathmon/**
 
 Every push to `main` auto-builds and deploys via GitHub Actions
 (`.github/workflows/deploy.yml`).
