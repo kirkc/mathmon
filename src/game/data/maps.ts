@@ -11,6 +11,8 @@ import type { AreaId } from '../../config/worldConfig';
  *   f  flowers (walkable)      W  water (solid)
  *   R  roof (solid)            B  building wall (solid)
  *   D  warp door               d  decorative door (solid)
+ *   N  subtraction gym door    s/O/v/k/c/x  coast: sand, ocean, dune
+ *                                 grass, palm, shells, rock
  *   S  sign (solid, readable)  F  fence (solid)
  *   G  gym floor               g  gym wall (solid)
  *   E  warp exit (gym -> town) M  gym mat (walkable decor)
@@ -72,7 +74,7 @@ export interface MapDefinition {
   warps: Record<string, WarpTarget>; // keyed by "x,y"
   npcs: NpcDefinition[];
   signs: SignDefinition[];
-  musicTrack: 'overworld' | 'gym' | 'marsh' | 'house';
+  musicTrack: 'overworld' | 'gym' | 'marsh' | 'house' | 'coast';
   /** True for the player-house floors (companion creature, furniture). */
   isPlayerHouse?: boolean;
 }
@@ -96,8 +98,8 @@ const OVERWORLD_GRID = [
   'TTT.........,,,,,,,,,,,,,.......::......,,,,,,,,,,,..........TTT',
   'TTT.............................::...........................TTT',
   'TTT.............................::...........................TTT',
-  'TTT...:::::::::::::::::::::::::::::::::::::::::::::::::::::..TTT',
-  'TTT...:::::::::::::::::::::::::::::::::::::::::::::::::::::..TTT',
+  'TTT...::::::::::::::::::::::::::::::::::::::::::::::::::::::::::',
+  'TTT...::::::::::::::::::::::::::::::::::::::::::::::::::::::::::',
   'TTT.....S.......................::....::.....................TTT',
   'TTTTTT..TTTTTTTTTTTTT...........::...S::....f...f...f...f....TTT',
   'TTTTTT..TTTTTTTTTTTTT...........::......f...WWWWWWWWWWWW.....TTT',
@@ -131,8 +133,8 @@ const OVERWORLD_GRID = [
 const MARSH_GRID = [
   'YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY',
   'YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY',
-  'YYYmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmYYY',
-  'YYYm;;;;;;;;;mmmmmmSmmmmmmmmmmmmmmmmmmm;;YYY',
+  'YYYmmmmmmmmmmmmmmmmmmmgggggmmmmmmmmmmmmmmYYY',
+  'YYYm;;;;;;;;;mmmmmmSmmggNggmmmmmmmmmmmm;;YYY',
   'YYYm;;;;;;;;;mmmm;;;;;;;;mmwwwwwwwwwwwm;;YYY',
   'YYYm;;;;;;;;;mmmm;;;;;;;;rwwwwwwwwwwwww;;YYY',
   'YYYmmmmwwwwwwwwwm;;;;;;;;mwwwwLwwwwwwww;;YYY',
@@ -165,6 +167,39 @@ const MARSH_GRID = [
   'YYYmm;;;;;;;;;;;;mmmmmmmmmmmmmmmmmmmmmmmmYYY',
   'YYYYYYYYYYYYYYYYYYYYmmmmYYYYYYYYYYYYYYYYYYYY',
   'YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY',
+];
+
+// Beach + ocean region east of Meadow Town. Grid generated + connectivity
+// checked by script (all walkable tiles reachable from the west entry road).
+const QUOTIENT_COAST_GRID = [
+  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  'TT........................ssssssssssssssOOOO',
+  'TT....TT........vvvvvvv...ssssssssssssssOOOO',
+  'TT....TT........vvvvvvv...sskssssssssssOOOOO',
+  'TT..vvvvvvvvv...vvvvvvv...sssssssssssssOOOOO',
+  'TT..vvvvvvvvv...vvvvvvv.c.ssssssssssssOOOOOO',
+  'TT..vvvvvvvvv.............ssssskssssssOOOOOO',
+  'TT..........TT........sssssssssssssssOOOOOOO',
+  'TT..........TT........ssssssssssssssOOOOOOOO',
+  'TT....................sssksssscsssssOOOOOOOO',
+  'TT.f..................sssssssssssssOOOOOOOOO',
+  'TT..S...f.............sssssssssssssOOOOOOOOO',
+  '::::::::::::::::::ssssssssssskssssOOOOOOOOOO',
+  '::::::::::::::::::ssssssssssssssssOOOOOOOOOO',
+  'TT..f.....f.....ssssssssssscsssssOOOOOOOOOOO',
+  'TT...vvvvvvvv...sssssksssssssssssOOOOOOOOOOO',
+  'TT...vvvvvvvv...ssssssssssssssssOOOOOOOOOOOO',
+  'TT...vvvvvvvv...ssssssssssksssssOOOOOOOOOOOO',
+  'TT..............sssssscssssscsxOOOOOOOOOOOOO',
+  'TT..TT..........ssssssssssssssOxOOOOOOOOOOOO',
+  'TT..TT..ssssssssssksssssssssxOOOOOOOOOOOOOOO',
+  'TT......sssssssscsssSsssssxOOOOOOOOOOOOOOOOO',
+  'TT......ssssksssssxsssssOOOOOOOOOOOOOOOOOOOO',
+  'TT......ssscsssssssxOOOOOOOOOOOOOOOOOOOOOOOO',
+  'TT.sssssssssssOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO',
+  'TT.sssOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO',
+  'OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO',
 ];
 
 const PLAYER_HOUSE_1_GRID = [
@@ -204,6 +239,19 @@ const GYM_GRID = [
   'gggggEEggggg',
 ];
 
+const SUBTRACTION_GYM_GRID = [
+  'gggggggggggg',
+  'gGGGGGGGGGGg',
+  'gGGGGMMGGGGg',
+  'gGGGGMMGGGGg',
+  'gGGGGGGGGGGg',
+  'gGMGGGGGGMGg',
+  'gGGGGGGGGGGg',
+  'gGGGGGGGGGGg',
+  'gGGGGGGGGGGg',
+  'gggggEEggggg',
+];
+
 export const MAPS: Record<string, MapDefinition> = {
   overworld: {
     key: 'overworld',
@@ -231,6 +279,21 @@ export const MAPS: Record<string, MapDefinition> = {
           badgeId: 'addition-gym',
           minLevelNumber: 3,
           lockedMessage: 'The gate to Minus Marsh is closed. Earn the Sum Badge and unlock Beginning Subtraction to enter!',
+        },
+      },
+      // East road to Quotient Coast: opens with the Difference Badge.
+      '63,18': {
+        mapKey: 'quotientCoast', tileX: 1, tileY: 13, facing: 'right',
+        requires: {
+          badgeId: 'subtraction-gym',
+          lockedMessage: 'The coast road is roped off. Earn the Difference Badge at the Subtraction Gym to pass!',
+        },
+      },
+      '63,19': {
+        mapKey: 'quotientCoast', tileX: 1, tileY: 14, facing: 'right',
+        requires: {
+          badgeId: 'subtraction-gym',
+          lockedMessage: 'The coast road is roped off. Earn the Difference Badge at the Subtraction Gym to pass!',
         },
       },
     },
@@ -312,10 +375,60 @@ export const MAPS: Record<string, MapDefinition> = {
     signs: [
       { tileX: 31, tileY: 2, text: 'NORTH GATE - Minus Marsh ahead! Trainers need the Sum Badge and Beginning Subtraction to enter.' },
       { tileX: 8, tileY: 20, text: 'WHISPERING WOODS - Shady paths, rustling grass, and one very quiet trainer.' },
-      { tileX: 37, tileY: 21, text: 'LAKE LUMEN - No swimming until you know your facts!' },
+      { tileX: 37, tileY: 21, text: 'LAKE LUMEN - No swimming until you know your facts! Anglers: MathMart Online sells fishing rods.' },
       { tileX: 34, tileY: 40, text: 'MEADOW TOWN - A friendly place to start an adventure. Gym door is the blue one!' },
+      { tileX: 60, tileY: 17, text: 'EAST ROAD - Quotient Coast: where the waves divide the shore evenly. Difference Badge required!' },
     ],
     musicTrack: 'overworld',
+  },
+  quotientCoast: {
+    key: 'quotientCoast',
+    name: 'Quotient Coast',
+    grid: QUOTIENT_COAST_GRID,
+    areaId: 'quotientCoast',
+    warps: {
+      '0,13': { mapKey: 'overworld', tileX: 62, tileY: 18, facing: 'left' },
+      '0,14': { mapKey: 'overworld', tileX: 62, tileY: 19, facing: 'left' },
+    },
+    npcs: [
+      {
+        id: 'trainer-isla',
+        name: 'Trainer Isla',
+        spriteKey: 'npc-girl',
+        tileX: 26,
+        tileY: 12,
+        facing: 'down',
+        dialog: ['The reef MathMon only bite a hook — but my Fivestar washed right up to me!'],
+        battle: {
+          type: 'trainer',
+          speciesId: 'fivestar',
+          enemyHp: 70,
+          enemyLevel: 6,
+          introText: 'Trainer Isla challenges you!',
+          defeatedDialog: [
+            'Five high fives! You earned every one.',
+            'Fisher Quill says six different MathMon swim these waters. Got your rod?',
+          ],
+        },
+      },
+      {
+        id: 'fisher-quill',
+        name: 'Fisher Quill',
+        spriteKey: 'npc-boy',
+        tileX: 29,
+        tileY: 17,
+        facing: 'down',
+        dialog: [
+          'Cast a line anywhere along the shore — just face the water and press ENTER.',
+          'No rod? MathMart Online back in Meadow Town sells them. Best 80 coins I ever spent.',
+        ],
+      },
+    ],
+    signs: [
+      { tileX: 4, tileY: 12, text: 'QUOTIENT COAST - Where the waves divide the shore evenly!' },
+      { tileX: 20, tileY: 22, text: 'TIDEPOOLS - Look closely: every pool holds exactly the same number of shells...' },
+    ],
+    musicTrack: 'coast',
   },
   minusMarsh: {
     key: 'minusMarsh',
@@ -327,6 +440,7 @@ export const MAPS: Record<string, MapDefinition> = {
       '21,34': { mapKey: 'overworld', tileX: 32, tileY: 1, facing: 'down' },
       '22,34': { mapKey: 'overworld', tileX: 33, tileY: 1, facing: 'down' },
       '23,34': { mapKey: 'overworld', tileX: 33, tileY: 1, facing: 'down' },
+      '24,3': { mapKey: 'subtractionGym', tileX: 5, tileY: 8, facing: 'up' },
     },
     npcs: [
       {
@@ -365,16 +479,54 @@ export const MAPS: Record<string, MapDefinition> = {
           introText: 'Trainer Silt challenges you!',
           defeatedDialog: [
             'Whoa. Not slow at all!',
-            'They say a Subtraction Gym will open past Difference Cave someday...',
+            'The Subtraction Gym is open just north of here. Gym Leader Rema takes no prisoners!',
           ],
         },
       },
     ],
     signs: [
-      { tileX: 19, tileY: 3, text: 'DIFFERENCE CAVE - Under construction. The diggers are still counting down.' },
+      { tileX: 19, tileY: 3, text: 'SUBTRACTION GYM - Gym Leader Rema takes away every challenger\'s confidence. Bring your best facts!' },
       { tileX: 24, tileY: 31, text: 'MINUS MARSH - Squishy ground! Wild MathMon lurk in the dark reeds.' },
     ],
     musicTrack: 'marsh',
+  },
+  subtractionGym: {
+    key: 'subtractionGym',
+    name: 'Subtraction Gym',
+    grid: SUBTRACTION_GYM_GRID,
+    areaId: 'minusMarsh',
+    warps: {
+      '5,9': { mapKey: 'minusMarsh', tileX: 24, tileY: 4, facing: 'down' },
+      '6,9': { mapKey: 'minusMarsh', tileX: 24, tileY: 4, facing: 'down' },
+    },
+    npcs: [
+      {
+        id: 'gym-rema',
+        name: 'Gym Leader Rema',
+        spriteKey: 'npc-rema',
+        tileX: 5,
+        tileY: 2,
+        facing: 'down',
+        dialog: [
+          "I'm Rema, the Subtraction Gym Leader!",
+          'I take away, and take away, until only the answer is left!',
+        ],
+        battle: {
+          type: 'gym',
+          speciesId: 'subgator',
+          enemyHp: 150,
+          enemyLevel: 7,
+          badgeId: 'subtraction-gym',
+          introText: 'Gym Leader Rema wants to battle!',
+          defeatedDialog: [
+            'Subtracted... by you! The Difference Badge is yours!',
+            'Keep practicing — bigger differences await.',
+          ],
+        },
+      },
+    ],
+    signs: [],
+    musicTrack: 'gym',
   },
   playerHouse1: {
     key: 'playerHouse1',
@@ -442,6 +594,8 @@ export const MAPS: Record<string, MapDefinition> = {
 };
 
 /** Tiles the player cannot walk through. */
-export const SOLID_TILES = new Set(['T', 'W', 'R', 'B', 'd', 'S', 'F', 'g', 'Y', 'w', 'L', 'Q', 'q', 'p']);
+export const SOLID_TILES = new Set(['T', 'W', 'R', 'B', 'd', 'S', 'F', 'g', 'Y', 'w', 'L', 'Q', 'q', 'p', 'O', 'k', 'x']);
 /** Tiles that can trigger wild encounters. */
-export const ENCOUNTER_TILES = new Set([',', ';']);
+export const ENCOUNTER_TILES = new Set([',', ';', 'v']);
+/** Water tiles the player can fish while facing (with a rod). */
+export const WATER_TILES = new Set(['W', 'w', 'O']);

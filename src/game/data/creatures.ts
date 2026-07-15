@@ -12,6 +12,10 @@ export interface CreatureSpecies {
   description: string;
   /** True for the three starting picks. */
   starter?: boolean;
+  /** Species id this creature evolves into (at evolveLevel). */
+  evolvesTo?: string;
+  /** Creature level at which evolution triggers. */
+  evolveLevel?: number;
 }
 
 export const CREATURE_SPECIES: Record<string, CreatureSpecies> = {
@@ -24,6 +28,17 @@ export const CREATURE_SPECIES: Record<string, CreatureSpecies> = {
     spriteKey: 'creature-embercub',
     description: 'A brave little cub with a warm glow. Loves a challenge.',
     starter: true,
+    evolvesTo: 'emberoar',
+    evolveLevel: 8,
+  },
+  emberoar: {
+    id: 'emberoar',
+    name: 'Emberoar',
+    type: 'Spark',
+    personality: 'bold',
+    baseHp: 58,
+    spriteKey: 'creature-emberoar',
+    description: 'Embercub all grown up. Its roar crackles like a campfire.',
   },
   leafloo: {
     id: 'leafloo',
@@ -34,6 +49,17 @@ export const CREATURE_SPECIES: Record<string, CreatureSpecies> = {
     spriteKey: 'creature-leafloo',
     description: 'A curious sprout creature that perks up around new facts.',
     starter: true,
+    evolvesTo: 'bloomarch',
+    evolveLevel: 8,
+  },
+  bloomarch: {
+    id: 'bloomarch',
+    name: 'Bloomarch',
+    type: 'Sprout',
+    personality: 'serene',
+    baseHp: 58,
+    spriteKey: 'creature-bloomarch',
+    description: 'Leafloo in full bloom. A flower crown marks a mind in flower too.',
   },
   aquabbit: {
     id: 'aquabbit',
@@ -44,6 +70,17 @@ export const CREATURE_SPECIES: Record<string, CreatureSpecies> = {
     spriteKey: 'creature-aquabbit',
     description: 'A gentle splash bunny that cheers for every right answer.',
     starter: true,
+    evolvesTo: 'tidebound',
+    evolveLevel: 8,
+  },
+  tidebound: {
+    id: 'tidebound',
+    name: 'Tidebound',
+    type: 'Splash',
+    personality: 'steadfast',
+    baseHp: 58,
+    spriteKey: 'creature-tidebound',
+    description: 'Aquabbit grown strong. It hops with the confidence of the whole ocean.',
   },
   pebblit: {
     id: 'pebblit',
@@ -53,6 +90,17 @@ export const CREATURE_SPECIES: Record<string, CreatureSpecies> = {
     baseHp: 28,
     spriteKey: 'creature-pebblit',
     description: 'A round pebble creature that naps in tall grass.',
+    evolvesTo: 'boulderit',
+    evolveLevel: 10,
+  },
+  boulderit: {
+    id: 'boulderit',
+    name: 'Boulderit',
+    type: 'Stone',
+    personality: 'unshakable',
+    baseHp: 52,
+    spriteKey: 'creature-boulderit',
+    description: 'Pebblit, but boulder. Nothing budges it — not even tricky facts.',
   },
   fluffinch: {
     id: 'fluffinch',
@@ -62,6 +110,17 @@ export const CREATURE_SPECIES: Record<string, CreatureSpecies> = {
     baseHp: 26,
     spriteKey: 'creature-fluffinch',
     description: 'A puffball bird that flits over Meadow Town.',
+    evolvesTo: 'galefinch',
+    evolveLevel: 10,
+  },
+  galefinch: {
+    id: 'galefinch',
+    name: 'Galefinch',
+    type: 'Breeze',
+    personality: 'fearless',
+    baseHp: 48,
+    spriteKey: 'creature-galefinch',
+    description: 'Fluffinch after the storm. It rides gales that would ground lesser birds.',
   },
   buzzlet: {
     id: 'buzzlet',
@@ -108,6 +167,15 @@ export const CREATURE_SPECIES: Record<string, CreatureSpecies> = {
     spriteKey: 'creature-wisplit',
     description: 'A drifting wisp of marsh fog. It splits in two when startled.',
   },
+  subgator: {
+    id: 'subgator',
+    name: 'Subgator',
+    type: 'Bog',
+    personality: 'sly',
+    baseHp: 150,
+    spriteKey: 'creature-subgator',
+    description: "Gym Leader Rema's champion. Its scaly back is striped with minus signs.",
+  },
   snailby: {
     id: 'snailby',
     name: 'Snailby',
@@ -116,6 +184,80 @@ export const CREATURE_SPECIES: Record<string, CreatureSpecies> = {
     baseHp: 40,
     spriteKey: 'creature-snailby',
     description: 'A patient snail whose spiral shell subtracts one ring each year.',
+  },
+  // ---- water dwellers (fishing rod encounters)
+  carpi: {
+    id: 'carpi',
+    name: 'Carpi',
+    type: 'Splash',
+    personality: 'dreamy',
+    baseHp: 34,
+    spriteKey: 'creature-carpi',
+    description: 'A round river carp whose tail curls like the symbol pi. It swims in perfect circles.',
+  },
+  octoplus: {
+    id: 'octoplus',
+    name: 'Octoplus',
+    type: 'Splash',
+    personality: 'clingy',
+    baseHp: 38,
+    spriteKey: 'creature-octoplus',
+    description: 'Its tentacle tips end in little plus signs. Its hugs add up fast.',
+  },
+  crabacus: {
+    id: 'crabacus',
+    name: 'Crabacus',
+    type: 'Shell',
+    personality: 'meticulous',
+    baseHp: 42,
+    spriteKey: 'creature-crabacus',
+    description: 'Slides its claws left and right like abacus beads whenever it counts.',
+  },
+  jellisum: {
+    id: 'jellisum',
+    name: 'Jellisum',
+    type: 'Mist',
+    personality: 'dozy',
+    baseHp: 30,
+    spriteKey: 'creature-jellisum',
+    description: 'Its glowing bell flashes tiny sums at night. Nobody knows who checks its work.',
+  },
+  fivestar: {
+    id: 'fivestar',
+    name: 'Fivestar',
+    type: 'Shell',
+    personality: 'cheerful',
+    baseHp: 36,
+    spriteKey: 'creature-fivestar',
+    description: 'A five-armed star of the tidepools. Gives high fives — all five at once.',
+  },
+  turtally: {
+    id: 'turtally',
+    name: 'Turtally',
+    type: 'Shell',
+    personality: 'methodical',
+    baseHp: 46,
+    spriteKey: 'creature-turtally',
+    description: 'Tally marks line its shell — one for every fact it has mastered.',
+  },
+  // ---- beach dwellers (Quotient Coast)
+  sandigit: {
+    id: 'sandigit',
+    name: 'Sandigit',
+    type: 'Stone',
+    personality: 'crumbly',
+    baseHp: 32,
+    spriteKey: 'creature-sandigit',
+    description: 'A living sandcastle. Tiny numbered flags mark each of its towers.',
+  },
+  gulltiply: {
+    id: 'gulltiply',
+    name: 'Gulltiply',
+    type: 'Breeze',
+    personality: 'greedy',
+    baseHp: 30,
+    spriteKey: 'creature-gulltiply',
+    description: 'A beach gull that seems to multiply the moment snacks appear.',
   },
 };
 

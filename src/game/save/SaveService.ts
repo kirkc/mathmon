@@ -128,6 +128,20 @@ export class SaveService {
     if (!data) return false;
     // Schema upgrades for saves created before newer features existed.
     data.house ??= { ownedItems: [] };
+    data.inventory ??= { items: [] };
+    if (!data.trophies) {
+      data.trophies = [];
+      // Backfill milestones already passed — appended silently (no fanfare)
+      // so long-time players aren't celebrated for old news.
+      if (data.totals.battlesWon > 0) data.trophies.push('first-win');
+      if (data.badges.includes('addition-gym')) data.trophies.push('sum-badge');
+      const leadLevel = data.party[0]?.level ?? 0;
+      for (const [level, id] of [[5, 'level-5'], [10, 'level-10'], [15, 'level-15']] as const) {
+        if (leadLevel >= level) data.trophies.push(id);
+      }
+      if (data.totals.questionsAnswered >= 100) data.trophies.push('century-scholar');
+      if (data.house.ownedItems.length >= 5) data.trophies.push('home-decorator');
+    }
     this.data = data;
     this.activeSlot = slot;
     return true;
@@ -165,7 +179,9 @@ export class SaveService {
       questionHistory: {},
       defeatedTrainers: [],
       badges: [],
+      trophies: [],
       house: { ownedItems: [] },
+      inventory: { items: [] },
       totals: { battlesWon: 0, battlesLost: 0, questionsAnswered: 0 },
     };
     this.activeSlot = slot;

@@ -4,10 +4,12 @@ import { worldConfig } from '../../config/worldConfig';
 import { chiptune } from '../audio/ChiptunePlayer';
 import { BattleEngine, type TurnResolution } from '../battle/BattleEngine';
 import { CREATURE_SPECIES } from '../data/creatures';
+import { creatureService, type EvolutionResult } from '../entities/CreatureService';
 import type { MathQuestion } from '../math/types';
 import { ProgressionService } from '../progression/ProgressionService';
 import type { CreatureInstance } from '../save/saveTypes';
-import { battleService, progressionService, questionService, saveService } from '../services';
+import { battleService, progressionService, questionService, saveService, trophyService } from '../services';
+import { CelebrationOverlay } from '../ui/CelebrationOverlay';
 import { FONT_BODY, FONT_HEADING } from '../ui/fonts';
 
 export interface BattlePayload {
@@ -20,7 +22,7 @@ export interface BattlePayload {
   victoryDialog?: string[];
 }
 
-type Phase = 'intro' | 'question' | 'remediate' | 'resolve' | 'end';
+type Phase = 'intro' | 'question' | 'remediate' | 'resolve' | 'catch' | 'end';
 
 const MONO = FONT_BODY;
 const HEAD = FONT_HEADING;
@@ -54,6 +56,7 @@ export class BattleScene extends Phaser.Scene {
   private progressText!: Phaser.GameObjects.Text;
   private timerBar!: Phaser.GameObjects.Rectangle;
   private timerBarBg!: Phaser.GameObjects.Rectangle;
+  private celebration!: CelebrationOverlay;
 
   constructor() {
     super('BattleScene');
@@ -82,8 +85,12 @@ export class BattleScene extends Phaser.Scene {
     this.phase = 'intro';
     this.input$ = '';
     this.question = null;
+    this.catchResultLine = null;
+    this.caughtCreature = false;
+    this.pendingEvolution = null;
 
     this.buildLayout();
+    this.celebration = new CelebrationOverlay(this);
     chiptune.playMusic('battle');
 
     this.messageText.setText(this.payload.introText + '\n\nPress ENTER to begin!');
@@ -225,11 +232,19 @@ export class BattleScene extends Phaser.Scene {
         // Hard timeout: keep the game flowing rather than stalling forever.
         this.finishRemediation();
       }
+    } else if (this.phase === 'catch') {
+      const elapsed = this.time.now - this.catchStartedAt;
+      const windowMs = battleConfig.catching.answerWindowMs;
+      this.timerBar.width = (W - 42) * Math.max(0, 1 - elapsed / windowMs);
+      if (elapsed >= windowMs) this.resolveCatch(false);
     }
   }
 
   private handleKey(event: KeyboardEvent): void {
     chiptune.unlock();
+
+    // The celebration overlay owns input while it plays (it self-dismisses).
+    if (this.celebration.isActive) return;
 
     if (this.phase === 'intro') {
       if (event.code === 'Enter' || event.code === 'Space') this.askNextQuestion();
@@ -239,16 +254,19 @@ export class BattleScene extends Phaser.Scene {
       if (event.code === 'Enter' || event.code === 'Space') this.advanceEndPage();
       return;
     }
-    if (this.phase !== 'question' && this.phase !== 'remediate') return;
+    if (this.phase !== 'question' && this.phase !== 'remediate' && this.phase !== 'catch') return;
 
     const digit = digitFrom(event);
     if (digit !== null && this.input$.length < this.answerLength()) {
       this.input$ += digit;
       this.renderInput();
-      if (this.phase === 'question') {
+      if (this.phase === 'question' || this.phase === 'catch') {
         // Auto-submit on the final digit — no ENTER needed, so the timer
         // measures pure answer speed.
-        if (this.input$.length === this.answerLength()) this.submitAnswer();
+        if (this.input$.length === this.answerLength()) {
+          if (this.phase === 'catch') this.submitCatchAnswer();
+          else this.submitAnswer();
+        }
       } else {
         this.checkRemediationInput();
       }
@@ -507,16 +525,106 @@ export class BattleScene extends Phaser.Scene {
     // Sync engine HP back to the saved creature before rewards/healing.
     this.playerCreature.currentHp = this.engine.player.currentHp;
 
+    // A defeated wild mon may offer to join — resolve that BEFORE rewards so
+    // finishBattle's persist covers the new party member.
+    if (won && this.shouldOfferCatch()) {
+      this.beginCatchOffer();
+      return;
+    }
+    this.showRewards(won);
+  }
+
+  // ------------------------------------------------------------- catching
+
+  private catchStartedAt = 0;
+  private catchResultLine: string | null = null;
+  private caughtCreature = false;
+
+  private shouldOfferCatch(): boolean {
+    const { offerChance, partyCap } = battleConfig.catching;
+    return (
+      this.payload.battleType === 'wild' &&
+      saveService.requireData().party.length < partyCap &&
+      Math.random() < offerChance
+    );
+  }
+
+  private beginCatchOffer(): void {
+    this.phase = 'catch';
+    const species = CREATURE_SPECIES[this.payload.enemy.speciesId];
+
+    // The fainted wild mon pops back up, impressed — undo the faint tween.
+    this.enemySprite.setVisible(true).setAlpha(1).setAngle(0);
+    this.enemySprite.y -= 26;
+    this.tweens.add({ targets: this.enemySprite, y: this.enemySprite.y - 10, duration: 180, yoyo: true, repeat: 1 });
+
+    // Bonus question on a tight window. Deliberately NOT recorded in the
+    // adaptive history — 6s is a different timing regime than battle.
+    this.question = questionService.nextQuestion();
+    this.catchStartedAt = this.time.now;
+    this.input$ = '';
+    this.messageText.setText(`The wild ${species.name} is impressed!\nAnswer fast to befriend it!`);
+    this.promptText.setText(`${this.question.prompt} = ?`).setVisible(true);
+    this.answerText.setVisible(true).setColor('#3a6ac8');
+    this.renderInput();
+    this.progressText.setVisible(false);
+    this.timerBarBg.setVisible(true);
+    this.timerBar.setVisible(true).setFillStyle(0xf8d048);
+    this.timerBar.width = W - 42;
+  }
+
+  private submitCatchAnswer(): void {
+    if (!this.question || this.phase !== 'catch') return;
+    const elapsed = this.time.now - this.catchStartedAt;
+    const correct = parseInt(this.input$, 10) === this.question.answer;
+    this.resolveCatch(correct && elapsed <= battleConfig.catching.answerWindowMs);
+  }
+
+  private resolveCatch(success: boolean): void {
+    if (this.phase !== 'catch') return;
+    this.phase = 'end';
+    const species = CREATURE_SPECIES[this.payload.enemy.speciesId];
+    this.promptText.setVisible(false);
+    this.answerText.setVisible(false);
+    this.timerBar.setVisible(false);
+    this.timerBarBg.setVisible(false);
+
+    const save = saveService.requireData();
+    if (success) {
+      chiptune.playSfx('levelup');
+      const level = Math.max(1, (save.party[0]?.level ?? 1) - battleConfig.catching.levelDeficit);
+      save.party.push(creatureService.createInstance(this.payload.enemy.speciesId, level));
+      trophyService.award('first-catch');
+      if (save.party.length >= battleConfig.catching.partyCap) trophyService.award('full-team');
+      this.caughtCreature = true;
+      this.catchResultLine = `${species.name} joined your team!\nOpen the pause menu to manage your party.`;
+      this.impactBurst(this.enemySprite.x, this.enemySprite.y);
+    } else {
+      chiptune.playSfx('timeout');
+      this.catchResultLine = `The wild ${species.name} waved goodbye...\nMaybe next time!`;
+      this.tweens.add({ targets: this.enemySprite, alpha: 0, duration: 400 });
+    }
+    this.showRewards(true);
+  }
+
+  // -------------------------------------------------------------- rewards
+
+  private pendingEvolution: EvolutionResult | null = null;
+
+  private showRewards(won: boolean): void {
+    this.phase = 'end';
     const rewards = battleService.finishBattle(this.payload.battleType, won, {
       trainerId: this.payload.trainerId,
       badgeId: this.payload.badgeId,
     });
+    this.pendingEvolution = rewards.evolution;
 
-    if (won) this.enemySprite.setVisible(false);
-    else this.playerSprite.setVisible(false);
+    if (won && !this.caughtCreature) this.enemySprite.setVisible(false);
+    if (!won) this.playerSprite.setVisible(false);
 
     // Build short pages so text never overflows the panel.
     this.endPages = [];
+    if (this.catchResultLine) this.endPages.push(this.catchResultLine);
     if (won) {
       const page1: string[] = [`You won! +${rewards.coins} coins, +${rewards.xp} XP.`];
       if (rewards.levelsGained > 0) {
@@ -527,6 +635,10 @@ export class BattleScene extends Phaser.Scene {
         page1.push('You earned the gym badge!');
       }
       this.endPages.push(page1.join('\n'));
+
+      if (rewards.evolution) {
+        this.endPages.push(`Whoa... ${rewards.evolution.from.name} is glowing!`);
+      }
 
       if (rewards.unlock?.unlocked && rewards.unlock.newLevel) {
         this.endPages.push(`★ New power unlocked: ${rewards.unlock.newLevel.levelName}! ★`);
@@ -568,7 +680,24 @@ export class BattleScene extends Phaser.Scene {
   private advanceEndPage(): void {
     this.endPageIndex += 1;
     if (this.endPageIndex >= this.endPages.length) {
-      this.exitBattle();
+      // Celebrations must finish before the scene transition — the overlay
+      // dies with this scene, so exitBattle only runs via the callbacks.
+      // Order: evolution cut-in first, then any trophies (including the
+      // first-evolution trophy it just earned).
+      const showTrophiesAndExit = (): void => {
+        if (trophyService.hasPending) {
+          this.celebration.showQueue(trophyService.drainPending(), () => this.exitBattle());
+        } else {
+          this.exitBattle();
+        }
+      };
+      if (this.pendingEvolution) {
+        const evolution = this.pendingEvolution;
+        this.pendingEvolution = null;
+        this.celebration.showEvolution(evolution, showTrophiesAndExit);
+      } else {
+        showTrophiesAndExit();
+      }
     } else {
       this.renderEndPage();
     }

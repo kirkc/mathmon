@@ -67,9 +67,15 @@ export interface SaveData {
   questionHistory: Record<string, QuestionHistoryEntry>;
   defeatedTrainers: string[];
   badges: string[];
+  /** Earned trophy ids (see data/trophies.ts), in the order they were won. */
+  trophies: string[];
   /** Furniture purchased for the player's house (item ids). */
   house: {
     ownedItems: string[];
+  };
+  /** Gear the player carries (see GEAR_ITEMS in data/houseItems.ts). */
+  inventory: {
+    items: string[];
   };
   totals: {
     battlesWon: number;

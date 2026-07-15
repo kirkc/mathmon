@@ -4,12 +4,14 @@ import { worldConfig } from '../../config/worldConfig';
 import { chiptune } from '../audio/ChiptunePlayer';
 import { encounterService } from '../battle/EncounterService';
 import { CREATURE_SPECIES } from '../data/creatures';
-import { HOUSE_FIXTURES, HOUSE_ITEMS } from '../data/houseItems';
-import { ENCOUNTER_TILES, MAPS, SOLID_TILES, type MapDefinition, type NpcDefinition } from '../data/maps';
+import { GEAR_ITEMS, HOUSE_FIXTURES, HOUSE_ITEMS } from '../data/houseItems';
+import { ENCOUNTER_TILES, MAPS, SOLID_TILES, WATER_TILES, type MapDefinition, type NpcDefinition } from '../data/maps';
+import { TROPHIES } from '../data/trophies';
 import { creatureService } from '../entities/CreatureService';
 import { startTileAnimations, TILE_TEXTURES } from '../gfx/textureFactory';
-import { progressionService, saveService } from '../services';
+import { progressionService, saveService, trophyService } from '../services';
 import { FONT_BODY, FONT_HEADING } from '../ui/fonts';
+import { CelebrationOverlay } from '../ui/CelebrationOverlay';
 import { DialogBox } from '../ui/DialogBox';
 import type { BattlePayload } from './BattleScene';
 
@@ -29,14 +31,16 @@ export class OverworldScene extends Phaser.Scene {
   private moving = false;
   private stepFrame = 0;
   private dialog!: DialogBox;
+  private celebration!: CelebrationOverlay;
   private paused = false;
   private pauseIndex = 0;
-  private pausePage: 'menu' | 'help' | 'controls' = 'menu';
+  private pausePage: 'menu' | 'help' | 'controls' | 'party' = 'menu';
+  private partyIndex = 0;
   private pauseUi: Phaser.GameObjects.Container | null = null;
   private npcSprites = new Map<string, Phaser.GameObjects.Image>();
   // ---- player house state
   private itemSolids = new Set<string>();
-  private itemAt = new Map<string, { name?: string; examine: string; isComputer?: boolean }>();
+  private itemAt = new Map<string, { name?: string; examine: string; isComputer?: boolean; isTrophyCase?: boolean }>();
   private itemSprites: Phaser.GameObjects.Image[] = [];
   private shopOpen = false;
   private shopIndex = 0;
@@ -47,6 +51,7 @@ export class OverworldScene extends Phaser.Scene {
   private companionHopping = false;
   private keys!: Record<string, Phaser.Input.Keyboard.Key>;
   private pendingBattleNpc: NpcDefinition | null = null;
+  private fishing = false;
 
   constructor() {
     super('OverworldScene');
@@ -70,6 +75,7 @@ export class OverworldScene extends Phaser.Scene {
       saveService.persist();
     }
     this.moving = false;
+    this.fishing = false;
     this.pendingBattleNpc = null;
     this.npcSprites.clear();
 
@@ -96,6 +102,7 @@ export class OverworldScene extends Phaser.Scene {
     this.cameras.main.startFollow(this.player, true);
 
     this.dialog = new DialogBox(this);
+    this.celebration = new CelebrationOverlay(this);
     this.paused = false;
     this.pauseUi = null;
 
@@ -116,11 +123,27 @@ export class OverworldScene extends Phaser.Scene {
     });
 
     chiptune.playMusic(this.map.musicTrack);
+
+    // Discovering the coast is itself a milestone.
+    if (this.map.key === 'quotientCoast') trophyService.award('coast-found');
+
+    // Present any trophies earned right before a scene transition (e.g. at
+    // the tail of a battle) that their scene didn't get to celebrate.
+    this.presentPendingTrophies();
+  }
+
+  private presentPendingTrophies(): void {
+    if (trophyService.hasPending && !this.celebration.isActive) {
+      this.celebration.showQueue(trophyService.drainPending(), () => undefined);
+    }
   }
 
   private renderMap(): void {
     const grid = this.map.grid;
-    const ground = this.map.key === 'minusMarsh' ? 'tile-mud' : 'tile-grass';
+    const ground =
+      this.map.key === 'minusMarsh' ? 'tile-mud'
+      : this.map.key === 'quotientCoast' ? 'tile-sand'
+      : 'tile-grass';
     for (let y = 0; y < grid.length; y++) {
       for (let x = 0; x < grid[y].length; x++) {
         const ch = grid[y][x];
@@ -150,7 +173,7 @@ export class OverworldScene extends Phaser.Scene {
   }
 
   update(): void {
-    if (this.paused || this.shopOpen || this.dialog.isOpen || this.moving) return;
+    if (this.paused || this.shopOpen || this.dialog.isOpen || this.celebration.isActive || this.fishing || this.moving) return;
 
     let dir: Facing | null = null;
     if (this.keys.up.isDown || this.keys.w.isDown) dir = 'up';
@@ -164,6 +187,10 @@ export class OverworldScene extends Phaser.Scene {
   private handleKeyDown(event: KeyboardEvent): void {
     chiptune.unlock();
     chiptune.playMusic(this.map.musicTrack);
+
+    // The celebration overlay owns input while it plays (it self-dismisses),
+    // and the line stays in the water until something bites.
+    if (this.celebration.isActive || this.fishing) return;
 
     if (this.shopOpen) {
       this.handleShopKey(event);
@@ -218,6 +245,10 @@ export class OverworldScene extends Phaser.Scene {
   }
 
   private handlePauseKey(event: KeyboardEvent): void {
+    if (this.pausePage === 'party') {
+      this.handlePartyKey(event);
+      return;
+    }
     if (this.pausePage !== 'menu') {
       if (
         matchesControl(event.code, controlsConfig.cancel) ||
@@ -246,7 +277,39 @@ export class OverworldScene extends Phaser.Scene {
   }
 
   private pauseMenuItems(): string[] {
-    return ['Resume', 'How to Play', 'Controls', 'Main Menu'];
+    const items = ['Resume', 'Party'];
+    if (!this.map.isPlayerHouse) items.push('Go Home');
+    items.push('How to Play', 'Controls', 'Main Menu');
+    return items;
+  }
+
+  private handlePartyKey(event: KeyboardEvent): void {
+    const party = saveService.requireData().party;
+    if (matchesControl(event.code, controlsConfig.cancel)) {
+      this.pausePage = 'menu';
+      this.renderPauseUi();
+      return;
+    }
+    if (party.length === 0) return;
+    if (event.code === 'ArrowUp' || event.code === 'KeyW') {
+      this.partyIndex = (this.partyIndex + party.length - 1) % party.length;
+      chiptune.playSfx('select');
+      this.renderPauseUi();
+    } else if (event.code === 'ArrowDown' || event.code === 'KeyS') {
+      this.partyIndex = (this.partyIndex + 1) % party.length;
+      chiptune.playSfx('select');
+      this.renderPauseUi();
+    } else if (matchesControl(event.code, controlsConfig.interact)) {
+      if (this.partyIndex > 0) {
+        // Swap the chosen creature into the partner slot (index 0 battles).
+        const [chosen] = party.splice(this.partyIndex, 1);
+        party.unshift(chosen);
+        this.partyIndex = 0;
+        saveService.persist();
+        chiptune.playSfx('levelup');
+      }
+      this.renderPauseUi();
+    }
   }
 
   private selectPauseItem(item: string): void {
@@ -254,6 +317,24 @@ export class OverworldScene extends Phaser.Scene {
     switch (item) {
       case 'Resume':
         this.closePause();
+        break;
+      case 'Go Home': {
+        // Fast travel: land on the exit mat inside the house (the same tile
+        // the front-door warp uses), then rebuild the scene like a warp does.
+        this.closePause();
+        const save = saveService.requireData();
+        save.player.mapKey = 'playerHouse1';
+        save.player.tileX = 5;
+        save.player.tileY = 8;
+        save.player.facing = 'up';
+        saveService.persist();
+        this.scene.restart();
+        break;
+      }
+      case 'Party':
+        this.pausePage = 'party';
+        this.partyIndex = 0;
+        this.renderPauseUi();
         break;
       case 'How to Play':
         this.pausePage = 'help';
@@ -321,6 +402,61 @@ export class OverworldScene extends Phaser.Scene {
       ui.add(
         this.add
           .text(GW / 2, GH - 16, 'ESC resume · ENTER select', { fontFamily: FONT_BODY, fontSize: '14px', color: '#8a93a6' })
+          .setOrigin(0.5),
+      );
+      return;
+    }
+
+    if (this.pausePage === 'party') {
+      const party = saveService.requireData().party;
+      ui.add(
+        this.add
+          .text(GW / 2, 28, 'YOUR PARTY', { fontFamily: FONT_HEADING, fontSize: '13px', color: '#f8d048' })
+          .setOrigin(0.5),
+      );
+      if (party.length === 0) {
+        ui.add(
+          this.add
+            .text(GW / 2, GH / 2, 'No creatures yet!', { fontFamily: FONT_BODY, fontSize: '18px', color: '#ffffff' })
+            .setOrigin(0.5),
+        );
+      }
+      party.forEach((member, i) => {
+        const species = CREATURE_SPECIES[member.speciesId];
+        const y = 64 + i * 36;
+        const active = i === this.partyIndex;
+        ui.add(
+          this.add
+            .rectangle(GW / 2, y, 350, 32, active ? 0x2c3a70 : 0x232c54)
+            .setStrokeStyle(2, active ? 0xf8d048 : 0x5468b8),
+        );
+        ui.add(this.add.image(GW / 2 - 152, y, species.spriteKey).setScale(1.6));
+        ui.add(
+          this.add
+            .text(GW / 2 - 126, y, `${i === 0 ? '★ ' : ''}${species.name}  Lv.${member.level}`, {
+              fontFamily: FONT_BODY,
+              fontSize: '18px',
+              color: active ? '#f8d048' : '#ffffff',
+            })
+            .setOrigin(0, 0.5),
+        );
+        ui.add(
+          this.add
+            .text(GW / 2 + 165, y, `HP ${member.currentHp}/${member.maxHp}`, {
+              fontFamily: FONT_BODY,
+              fontSize: '15px',
+              color: '#c0d0f8',
+            })
+            .setOrigin(1, 0.5),
+        );
+      });
+      ui.add(
+        this.add
+          .text(GW / 2, GH - 16, '↑↓ choose · ENTER make partner · ESC back', {
+            fontFamily: FONT_BODY,
+            fontSize: '14px',
+            color: '#8a93a6',
+          })
           .setOrigin(0.5),
       );
       return;
@@ -476,6 +612,7 @@ export class OverworldScene extends Phaser.Scene {
     const item = this.itemAt.get(`${tx},${ty}`);
     if (item) {
       if (item.isComputer) this.openShop();
+      else if (item.isTrophyCase) this.openTrophyCase();
       else if (item.examine) this.dialog.show([item.examine]);
       return;
     }
@@ -486,9 +623,82 @@ export class OverworldScene extends Phaser.Scene {
       return;
     }
 
-    if (this.map.grid[ty]?.[tx] === 'd') {
+    const facingTile = this.map.grid[ty]?.[tx];
+    if (facingTile && WATER_TILES.has(facingTile)) {
+      this.tryFish(tx, ty);
+      return;
+    }
+
+    if (facingTile === 'd') {
       this.dialog.show(['The door is locked. Someone must be out adventuring.']);
     }
+  }
+
+  // -------------------------------------------------------------- fishing
+
+  private tryFish(tx: number, ty: number): void {
+    const save = saveService.requireData();
+    if (!save.inventory.items.includes('fishing-rod')) {
+      this.dialog.show([
+        'The water sparkles... if only you had a fishing rod!',
+        'MathMart Online (your house computer) sells them.',
+      ]);
+      return;
+    }
+
+    this.fishing = true;
+    chiptune.playSfx('select');
+    const bobber = this.add
+      .circle(tx * TILE + TILE / 2, ty * TILE + TILE / 2 - 2, 5, 0xc83a3a)
+      .setStrokeStyle(2, 0xf8f8f0)
+      .setDepth(11);
+    this.tweens.add({ targets: bobber, y: '+=3', duration: 380, yoyo: true, repeat: -1 });
+
+    this.time.delayedCall(Phaser.Math.Between(900, 2400), () => {
+      bobber.destroy();
+      this.fishing = false;
+      if (Math.random() < 0.25) {
+        this.dialog.show(['Not even a nibble... Cast again!']);
+        return;
+      }
+      // Something bit! Exclamation beat, then into battle.
+      chiptune.playSfx('encounter');
+      trophyService.award('first-fish');
+      const alert = this.add
+        .text(this.player.x, this.player.y - 26, '!', {
+          fontFamily: FONT_HEADING,
+          fontSize: '16px',
+          color: '#c83a3a',
+          stroke: '#f8f8f0',
+          strokeThickness: 4,
+        })
+        .setOrigin(0.5)
+        .setDepth(60);
+      this.tweens.add({ targets: alert, y: alert.y - 8, duration: 200 });
+      const enemy = encounterService.rollFishCreature(this.areaIdAt(ty));
+      const species = CREATURE_SPECIES[enemy.speciesId];
+      this.time.delayedCall(400, () => {
+        alert.destroy();
+        this.launchBattle({
+          battleType: 'wild',
+          enemy,
+          introText: `You hooked a wild ${species.name}!`,
+        });
+      });
+    });
+  }
+
+  /** Examine the trophy case: page through everything earned so far. */
+  private openTrophyCase(): void {
+    const earned = trophyService.earned();
+    if (earned.length === 0) {
+      this.dialog.show(['Your trophy case is empty... for now. Go make some math magic!']);
+      return;
+    }
+    this.dialog.show([
+      `TROPHY CASE — ${earned.length} of ${TROPHIES.length} earned!`,
+      ...earned.map((t) => `★ ${t.name}\n${t.description}`),
+    ]);
   }
 
   private talkTo(npc: NpcDefinition): void {
@@ -595,6 +805,7 @@ export class OverworldScene extends Phaser.Scene {
             name: 'name' in item ? item.name : undefined,
             examine: item.examine,
             isComputer: 'isComputer' in item ? item.isComputer : undefined,
+            isTrophyCase: 'isTrophyCase' in item ? item.isTrophyCase : undefined,
           });
         }
       }
@@ -694,10 +905,22 @@ export class OverworldScene extends Phaser.Scene {
     this.shopOpen = false;
     this.shopUi?.destroy();
     this.shopUi = null;
+    this.presentPendingTrophies(); // e.g. Home Decorator earned while shopping
   }
 
+  /** Gear (carried tools) listed first, then furniture cheapest-first. */
   private shopCatalog() {
-    return [...HOUSE_ITEMS].sort((a, b) => a.price - b.price);
+    return [
+      ...GEAR_ITEMS.map((g) => ({ ...g, kind: 'gear' as const })),
+      ...[...HOUSE_ITEMS].sort((a, b) => a.price - b.price).map((i) => ({ ...i, kind: 'furniture' as const })),
+    ];
+  }
+
+  private shopItemOwned(item: ReturnType<OverworldScene['shopCatalog']>[number]): boolean {
+    const save = saveService.requireData();
+    return item.kind === 'gear'
+      ? save.inventory.items.includes(item.id)
+      : save.house.ownedItems.includes(item.id);
   }
 
   private handleShopKey(event: KeyboardEvent): void {
@@ -721,7 +944,7 @@ export class OverworldScene extends Phaser.Scene {
     if (matchesControl(event.code, controlsConfig.interact)) {
       const save = saveService.requireData();
       const item = catalog[this.shopIndex];
-      if (save.house.ownedItems.includes(item.id)) {
+      if (this.shopItemOwned(item)) {
         this.shopMessage = `You already own the ${item.name}!`;
         chiptune.playSfx('wrong');
       } else if (save.player.coins < item.price) {
@@ -729,11 +952,17 @@ export class OverworldScene extends Phaser.Scene {
         chiptune.playSfx('wrong');
       } else {
         save.player.coins -= item.price;
-        save.house.ownedItems.push(item.id);
+        if (item.kind === 'gear') {
+          save.inventory.items.push(item.id);
+          this.shopMessage = `${item.name} delivered! ${item.examine}`;
+        } else {
+          save.house.ownedItems.push(item.id);
+          this.shopMessage = `${item.name} delivered! Check ${item.mapKey === this.map.key ? 'the room' : 'the other floor'}.`;
+          this.renderHouseItems(); // appears instantly if it's on this floor
+          if (save.house.ownedItems.length >= 5) trophyService.award('home-decorator');
+        }
         saveService.persist();
-        this.shopMessage = `${item.name} delivered! Check ${item.mapKey === this.map.key ? 'the room' : 'the other floor'}.`;
         chiptune.playSfx('victory');
-        this.renderHouseItems(); // appears instantly if it's on this floor
       }
       this.renderShopUi();
     }
@@ -767,11 +996,11 @@ export class OverworldScene extends Phaser.Scene {
       const i = first + row;
       const y = 56 + row * 22;
       const selected = i === this.shopIndex;
-      const owned = save.house.ownedItems.includes(item.id);
+      const owned = this.shopItemOwned(item);
       const affordable = save.player.coins >= item.price;
       const color = owned ? '#7a86ad' : selected ? '#f8d048' : '#ffffff';
       ui.add(
-        this.add.text(52, y, `${selected ? '▶' : ' '} ${item.name}`, {
+        this.add.text(52, y, `${selected ? '▶' : ' '} ${item.kind === 'gear' ? '⚒ ' : ''}${item.name}`, {
           fontFamily: FONT_BODY,
           fontSize: '17px',
           color,

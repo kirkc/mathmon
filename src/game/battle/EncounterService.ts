@@ -29,10 +29,22 @@ export class EncounterService {
 
   rollWildCreature(areaId: AreaId): CreatureInstance {
     const area = worldConfig.areas[areaId];
-    const speciesId = area.wildSpecies[Math.floor(Math.random() * area.wildSpecies.length)];
+    return this.rollFromTable(area.wildSpecies, area.wildHp);
+  }
+
+  /** Fishing-rod encounters pull from the area's water table. */
+  rollFishCreature(areaId: AreaId): CreatureInstance {
+    const area = worldConfig.areas[areaId];
+    return this.rollFromTable(area.fishSpecies, area.fishHp);
+  }
+
+  private rollFromTable(
+    species: readonly string[],
+    hpRange: { min: number; max: number },
+  ): CreatureInstance {
+    const speciesId = species[Math.floor(Math.random() * species.length)];
     const creature = creatureService.createInstance(speciesId);
-    const hp =
-      area.wildHp.min + Math.floor(Math.random() * (area.wildHp.max - area.wildHp.min + 1));
+    const hp = hpRange.min + Math.floor(Math.random() * (hpRange.max - hpRange.min + 1));
     creature.maxHp = hp;
     creature.currentHp = hp;
     return creature;

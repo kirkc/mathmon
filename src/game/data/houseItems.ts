@@ -46,6 +46,21 @@ export const HOUSE_ITEMS: HouseItem[] = [
   { id: 'tv', name: 'Big TV', price: 150, mapKey: 'playerHouse1', tileX: 4, tileY: 2, tilesW: 2, textureKey: 'item-tv', solid: true, examine: "It's playing a MathMon battle replay!" },
 ];
 
+/**
+ * Gear (tools) sold at the computer alongside furniture. Unlike furniture,
+ * gear travels with the player — ownership lives in SaveData.inventory.
+ */
+export interface GearItem {
+  id: string;
+  name: string;
+  price: number;
+  examine: string;
+}
+
+export const GEAR_ITEMS: GearItem[] = [
+  { id: 'fishing-rod', name: 'Fishing Rod', price: 80, examine: 'A trusty rod. Face any water and press ENTER to cast!' },
+];
+
 /** Items every house starts with (not purchasable, fixed). */
 export interface HouseFixture {
   id: string;
@@ -59,9 +74,12 @@ export interface HouseFixture {
   examine: string;
   /** The computer opens the furniture shop. */
   isComputer?: boolean;
+  /** The trophy case shows earned trophies when examined. */
+  isTrophyCase?: boolean;
 }
 
 export const HOUSE_FIXTURES: HouseFixture[] = [
   { id: 'computer', mapKey: 'playerHouse1', tileX: 2, tileY: 2, textureKey: 'item-computer', solid: true, examine: '', isComputer: true },
+  { id: 'trophy-case', mapKey: 'playerHouse1', tileX: 9, tileY: 2, textureKey: 'item-trophy-case', solid: true, examine: '', isTrophyCase: true },
   { id: 'bed', mapKey: 'playerHouse2', tileX: 2, tileY: 2, tilesH: 2, textureKey: 'item-bed', solid: true, examine: 'Your cozy bed. Dream of big sums.' },
 ];

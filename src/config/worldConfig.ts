@@ -29,6 +29,8 @@ export const worldConfig = {
       levelFocus: 1,
       wildSpecies: ['pebblit', 'fluffinch'],
       wildHp: { min: 25, max: 32 },
+      fishSpecies: ['carpi', 'jellisum'],
+      fishHp: { min: 28, max: 36 },
     },
     sumwoodTrail: {
       id: 'sumwood-trail',
@@ -36,6 +38,8 @@ export const worldConfig = {
       levelFocus: 2,
       wildSpecies: ['pebblit', 'fluffinch', 'buzzlet'],
       wildHp: { min: 28, max: 38 },
+      fishSpecies: ['carpi', 'jellisum'],
+      fishHp: { min: 30, max: 40 },
     },
     minusMarsh: {
       id: 'minus-marsh',
@@ -43,6 +47,17 @@ export const worldConfig = {
       levelFocus: 3,
       wildSpecies: ['croakle', 'wisplit', 'snailby'],
       wildHp: { min: 32, max: 44 },
+      fishSpecies: ['carpi', 'croakle', 'octoplus'],
+      fishHp: { min: 34, max: 46 },
+    },
+    quotientCoast: {
+      id: 'quotient-coast',
+      name: 'Quotient Coast',
+      levelFocus: 5,
+      wildSpecies: ['sandigit', 'gulltiply', 'crabacus', 'fivestar'],
+      wildHp: { min: 40, max: 55 },
+      fishSpecies: ['carpi', 'octoplus', 'jellisum', 'fivestar', 'turtally', 'crabacus'],
+      fishHp: { min: 42, max: 58 },
     },
   },
 } as const;

@@ -55,4 +55,15 @@ export const battleConfig = {
 
   /** Consolation rewards on a loss (never zero — effort counts). */
   lossRewards: { coins: 2, xp: 5 },
+
+  /** Post-victory befriending: a defeated wild mon may offer to join. */
+  catching: {
+    /** Chance a defeated wild creature asks to join (party not full). */
+    offerChance: 0.4,
+    /** The bonus question must be answered within this window. */
+    answerWindowMs: 6000,
+    partyCap: 6,
+    /** New recruits join a couple of levels below your partner. */
+    levelDeficit: 2,
+  },
 } as const;

@@ -8,6 +8,11 @@ export interface LevelUpResult {
   hpGained: number;
 }
 
+export interface EvolutionResult {
+  from: CreatureSpecies;
+  to: CreatureSpecies;
+}
+
 /**
  * Creature creation, XP, and leveling. Creature level is intentionally
  * independent from math progression — a student can keep leveling their
@@ -56,6 +61,24 @@ export class CreatureService {
 
   healFull(creature: CreatureInstance): void {
     creature.currentHp = creature.maxHp;
+  }
+
+  /** Non-null when the creature has reached its species' evolution level. */
+  checkEvolution(creature: CreatureInstance): EvolutionResult | null {
+    const species = this.getSpecies(creature.speciesId);
+    if (!species.evolvesTo || !species.evolveLevel) return null;
+    if (creature.level < species.evolveLevel) return null;
+    return { from: species, to: this.getSpecies(species.evolvesTo) };
+  }
+
+  /** Evolve in place: new species, recomputed max HP, fully healed. */
+  applyEvolution(creature: CreatureInstance): EvolutionResult | null {
+    const evolution = this.checkEvolution(creature);
+    if (!evolution) return null;
+    creature.speciesId = evolution.to.id;
+    creature.maxHp = evolution.to.baseHp + (creature.level - 1) * 3;
+    creature.currentHp = creature.maxHp;
+    return evolution;
   }
 }
 

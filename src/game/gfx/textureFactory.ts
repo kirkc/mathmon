@@ -127,6 +127,35 @@ export function drawMarshGrassFrame(ctx: Ctx, frame: number): void {
   }
 }
 
+/** Deep ocean — animated (3 frames): drifting foam crests + blinking glints. */
+export function drawOceanFrame(ctx: Ctx, frame: number): void {
+  px(ctx, 0, 0, '#2a9fae', T, T);
+  dither(ctx, 0, 0, T, T, '#3ab4c2', frame % 2);
+  const drift = frame % 3;
+  for (const [wy, base] of [[2, 3], [7, 8], [12, 1]] as const) {
+    const wx = (base + drift * 2) % 10;
+    px(ctx, wx, wy, '#8ce0e8', 4, 1); // foam crest
+    px(ctx, wx + 5, wy + 1, '#5ec8d4', 3, 1);
+  }
+  if (frame === 0) px(ctx, 13, 9, '#f2fcfc'); // sun glints
+  if (frame === 2) px(ctx, 3, 14, '#f2fcfc');
+}
+
+/** Dune grass — the coast's encounter tile, swaying like tall grass. */
+export function drawDuneGrassFrame(ctx: Ctx, frame: number): void {
+  px(ctx, 0, 0, '#e8d8a8', T, T);
+  dither(ctx, 0, 0, T, T, '#dcc890', 1);
+  const sway = frame % 2 === 0 ? 0 : 1;
+  for (const gx of [2, 7, 12]) {
+    for (const gy of [4, 11]) {
+      px(ctx, gx, gy, '#a8a052', 1, 4);
+      px(ctx, gx + 2, gy + 1, '#a8a052', 1, 3);
+      px(ctx, gx + 1 + sway, gy - 2, '#c2b862', 1, 3); // swaying blade
+      px(ctx, gx + 1 + sway, gy - 3, '#d8cc78'); // sun-bleached tip
+    }
+  }
+}
+
 /** Murky marsh water — slow ripple, no sparkle (it's swamp). */
 export function drawMarshWaterFrame(ctx: Ctx, frame: number): void {
   px(ctx, 0, 0, '#3d5a4e', T, T);
@@ -145,6 +174,61 @@ export function generateTileTextures(scene: Phaser.Scene): void {
   makeTexture(scene, 'tile-water', T, T, (ctx) => drawWaterFrame(ctx, 0));
   makeTexture(scene, 'tile-marsh-grass', T, T, (ctx) => drawMarshGrassFrame(ctx, 0));
   makeTexture(scene, 'tile-marsh-water', T, T, (ctx) => drawMarshWaterFrame(ctx, 0));
+
+  makeTexture(scene, 'tile-ocean', T, T, (ctx) => drawOceanFrame(ctx, 0));
+  makeTexture(scene, 'tile-dune-grass', T, T, (ctx) => drawDuneGrassFrame(ctx, 0));
+
+  makeTexture(scene, 'tile-sand', T, T, (ctx) => {
+    px(ctx, 0, 0, '#e8d8a8', T, T);
+    for (let y = 0; y < T; y++) {
+      for (let x = 0; x < T; x++) {
+        if (speckle(x, y, 10)) px(ctx, x, y, '#dcc890');
+        else if (speckle(x, y, 13, 2)) px(ctx, x, y, '#f2e4bc');
+      }
+    }
+    px(ctx, 4, 7, '#c8b078', 2, 1); // wind ripples
+    px(ctx, 10, 12, '#c8b078', 3, 1);
+  });
+
+  makeTexture(scene, 'tile-palm', T, T, (ctx) => {
+    px(ctx, 0, 0, '#e8d8a8', T, T);
+    dither(ctx, 0, 0, T, T, '#dcc890', 0);
+    px(ctx, 5, 13, '#c8b078', 7, 2); // shadow
+    px(ctx, 7, 6, '#8a5a2b', 2, 9); // curved trunk
+    px(ctx, 8, 4, '#8a5a2b', 1, 3);
+    px(ctx, 7, 8, '#a8743c', 1, 6);
+    px(ctx, 4, 2, '#3f9c4e', 4, 2); // fronds
+    px(ctx, 9, 2, '#3f9c4e', 4, 2);
+    px(ctx, 2, 4, '#2e7a3c', 4, 2);
+    px(ctx, 11, 4, '#2e7a3c', 4, 2);
+    px(ctx, 7, 1, '#4fb35e', 3, 2);
+    px(ctx, 8, 5, '#d9542c', 2, 2); // coconuts
+  });
+
+  makeTexture(scene, 'tile-shells', T, T, (ctx) => {
+    px(ctx, 0, 0, '#e8d8a8', T, T);
+    dither(ctx, 0, 0, T, T, '#dcc890', 0);
+    px(ctx, 3, 4, '#f2a0b8', 3, 2); // pink shell
+    px(ctx, 4, 3, '#f2a0b8', 1, 1);
+    px(ctx, 4, 4, '#fce8ee', 1, 1);
+    px(ctx, 10, 8, '#f8f8f0', 3, 2); // white shell
+    px(ctx, 11, 7, '#f8f8f0', 1, 1);
+    px(ctx, 6, 12, '#f28066', 3, 2); // little starfish
+    px(ctx, 7, 11, '#f28066', 1, 1);
+    px(ctx, 7, 13, '#f28066', 1, 1);
+  });
+
+  makeTexture(scene, 'tile-coast-rock', T, T, (ctx) => {
+    px(ctx, 0, 0, '#e8d8a8', T, T);
+    dither(ctx, 0, 0, T, T, '#dcc890', 0);
+    px(ctx, 3, 5, '#565e70', 10, 8); // rock outline
+    px(ctx, 4, 4, '#8a93a6', 8, 8);
+    px(ctx, 4, 4, '#aab2c4', 5, 2); // lit top
+    px(ctx, 4, 11, '#6d7689', 8, 1);
+    px(ctx, 11, 6, '#e8f4ff', 1, 1); // wet glint
+    px(ctx, 2, 12, '#5ec8d4', 3, 1); // tidepool edge
+    px(ctx, 12, 13, '#5ec8d4', 2, 1);
+  });
 
   makeTexture(scene, 'tile-mud', T, T, (ctx) => {
     px(ctx, 0, 0, '#6b5638', T, T);
@@ -391,6 +475,20 @@ export function generateTileTextures(scene: Phaser.Scene): void {
     px(ctx, 7, 6, '#f8d048', 2, 6);
     px(ctx, 5, 8, '#f8d048', 6, 2);
     px(ctx, 7, 6, '#fff3b0', 2, 1);
+    px(ctx, 3, 15, '#c4b288', 10, 1); // step
+  });
+
+  makeTexture(scene, 'tile-door-subgym', T, T, (ctx) => {
+    // Subtraction Gym door: same build as the gym door, minus the plus.
+    px(ctx, 0, 0, '#ead9ad', T, T);
+    dither(ctx, 0, 0, T, T, '#e0cd9c', 0);
+    px(ctx, 2, 1, WOOD.dark, 12, 15); // frame
+    px(ctx, 3, 2, '#2e3c78', 10, 14);
+    px(ctx, 4, 3, '#4458a8', 8, 12);
+    px(ctx, 4, 3, '#5a70c4', 8, 2); // lit top
+    // gold minus emblem
+    px(ctx, 5, 8, '#f8d048', 6, 2);
+    px(ctx, 5, 8, '#fff3b0', 6, 1);
     px(ctx, 3, 15, '#c4b288', 10, 1); // step
   });
 
@@ -663,6 +761,50 @@ export function generateFurnitureTextures(scene: Phaser.Scene): void {
   });
 }
 
+// --------------------------------------------------------------- trophies
+
+export function generateTrophyTextures(scene: Phaser.Scene): void {
+  const GOLD = '#f8d048';
+  const GOLD_DARK = '#d9b32e';
+  const GOLD_LIGHT = '#fff3b0';
+
+  // The trophy itself — shown big (scaled up) by the celebration overlay.
+  makeTexture(scene, 'trophy-gold', T, T, (ctx) => {
+    px(ctx, 3, 1, GOLD_LIGHT, 10, 1); // rim
+    px(ctx, 4, 2, GOLD, 8, 5); // bowl
+    px(ctx, 4, 5, GOLD_DARK, 8, 2);
+    px(ctx, 5, 2, GOLD_LIGHT, 2, 2); // sheen
+    px(ctx, 1, 2, GOLD_DARK, 2, 1); // left handle
+    px(ctx, 1, 2, GOLD_DARK, 1, 4);
+    px(ctx, 1, 5, GOLD_DARK, 3, 1);
+    px(ctx, 13, 2, GOLD_DARK, 2, 1); // right handle
+    px(ctx, 14, 2, GOLD_DARK, 1, 4);
+    px(ctx, 12, 5, GOLD_DARK, 3, 1);
+    px(ctx, 7, 3, '#c83a3a', 2, 2); // gem emblem
+    px(ctx, 7, 3, '#e06060', 1, 1);
+    px(ctx, 7, 7, GOLD_DARK, 2, 2); // stem
+    px(ctx, 6, 9, GOLD, 4, 1); // collar
+    px(ctx, 5, 10, '#8a5a2b', 6, 2); // wooden plinth
+    px(ctx, 4, 12, '#6b3f1d', 8, 2);
+    px(ctx, 4, 12, '#a8743c', 8, 1);
+  });
+
+  // Glass-front display cabinet for the player's house.
+  makeTexture(scene, 'item-trophy-case', T, 24, (ctx) => {
+    px(ctx, 1, 0, WOOD.dark, 14, 24); // cabinet body
+    px(ctx, 2, 1, WOOD.mid, 12, 22);
+    px(ctx, 1, 0, WOOD.pale, 14, 1); // top trim
+    px(ctx, 3, 2, '#a7d3f2', 10, 19); // glass front
+    px(ctx, 3, 2, '#d2ecfa', 3, 7); // glare
+    for (const sy of [8, 14, 20]) px(ctx, 3, sy, WOOD.light, 10, 1); // shelves
+    for (const [cx, cy] of [[4, 5], [9, 5], [5, 11], [10, 11], [7, 17]] as const) {
+      px(ctx, cx, cy, GOLD, 2, 2); // tiny cups
+      px(ctx, cx, cy + 2, GOLD_DARK, 2, 1);
+    }
+    px(ctx, 1, 23, WOOD.dark, 14, 1);
+  });
+}
+
 // -------------------------------------------------------------- humanoids
 
 interface HumanoidStyle {
@@ -762,6 +904,12 @@ export function generateCharacterTextures(scene: Phaser.Scene): void {
     shirt: '#c84848', shirtShade: '#a83232',
     pants: '#26203a',
   };
+  const rema: HumanoidStyle = {
+    hair: '#3aa8a0', hairLight: '#56c4bc',
+    skin: '#d9a06a', skinShade: '#bd8654',
+    shirt: '#7a4a8c', shirtShade: '#5d3a6b',
+    pants: '#26203a',
+  };
 
   const facings: Array<'down' | 'up' | 'side'> = ['down', 'up', 'side'];
   for (const facing of facings) {
@@ -774,13 +922,15 @@ export function generateCharacterTextures(scene: Phaser.Scene): void {
   makeTexture(scene, 'npc-girl', T, T, (ctx) => drawHumanoid(ctx, girl, 'down', 0));
   makeTexture(scene, 'npc-boy', T, T, (ctx) => drawHumanoid(ctx, boy, 'down', 0));
   makeTexture(scene, 'npc-ada', T, T, (ctx) => drawHumanoid(ctx, ada, 'down', 0));
+  makeTexture(scene, 'npc-rema', T, T, (ctx) => drawHumanoid(ctx, rema, 'down', 0));
 }
 
 // -------------------------------------------------------------- creatures
 
 type CreatureShape =
   | 'cub' | 'leaf' | 'bunny' | 'rock' | 'bird' | 'bug' | 'spiky' | 'tank'
-  | 'frog' | 'wisp' | 'snail';
+  | 'tankMinus' | 'frog' | 'wisp' | 'snail'
+  | 'fish' | 'octo' | 'crab' | 'jelly' | 'star' | 'tankTally';
 
 interface CreatureStyle {
   body: string;
@@ -793,6 +943,101 @@ interface CreatureStyle {
 
 function drawCreature(ctx: Ctx, s: CreatureStyle): void {
   const { body, bodyLight, bodyShade, belly, accent, shape } = s;
+
+  // Water shapes replace the whole base body, so draw them and return early.
+  switch (shape) {
+    case 'fish': // side-on carp: rounded oval body, pi-curl tail, bubbles
+      px(ctx, 3, 6, OUTLINE, 8, 6); // stacked rects round the silhouette
+      px(ctx, 2, 7, OUTLINE, 10, 4);
+      px(ctx, 4, 5, OUTLINE, 6, 8);
+      px(ctx, 4, 6, body, 6, 6);
+      px(ctx, 3, 7, body, 8, 4);
+      px(ctx, 4, 6, bodyLight, 3, 1); // top sheen
+      px(ctx, 3, 10, bodyShade, 8, 1);
+      px(ctx, 4, 8, belly, 4, 2);
+      px(ctx, 4, 7, OUTLINE); // eye
+      px(ctx, 4, 7, '#ffffff', 1, 1);
+      px(ctx, 2, 9, OUTLINE, 1, 1); // pouty mouth
+      px(ctx, 6, 4, accent, 3, 1); // dorsal fin
+      px(ctx, 7, 3, accent, 1, 1);
+      px(ctx, 6, 12, accent, 2, 1); // pectoral fin
+      px(ctx, 11, 7, OUTLINE, 1, 2); // tail joint
+      px(ctx, 12, 5, accent, 3, 1); // pi-curl tail: bar + two legs
+      px(ctx, 12, 6, accent, 1, 4);
+      px(ctx, 14, 6, accent, 1, 4);
+      px(ctx, 1, 4, '#e8f4ff', 1, 1); // bubbles
+      px(ctx, 2, 2, '#e8f4ff', 1, 1);
+      return;
+    case 'octo': // dome head with dangling plus-tipped tentacles
+      px(ctx, 4, 2, OUTLINE, 8, 7);
+      px(ctx, 3, 4, OUTLINE, 10, 5);
+      px(ctx, 5, 3, body, 6, 5);
+      px(ctx, 4, 5, body, 8, 3);
+      px(ctx, 5, 3, bodyLight, 3, 1);
+      px(ctx, 6, 5, OUTLINE); // eyes
+      px(ctx, 9, 5, OUTLINE);
+      px(ctx, 6, 5, '#ffffff', 1, 1);
+      px(ctx, 6, 7, belly, 4, 1); // little smile band
+      for (const tx of [3, 6, 9, 12]) {
+        px(ctx, tx, 9, body, 1, 4); // tentacle
+        px(ctx, tx, 13, accent, 1, 1); // plus tip: center
+        px(ctx, tx - 1, 13, accent, 3, 1); // plus tip: bar
+        px(ctx, tx, 12, accent, 1, 1);
+        px(ctx, tx, 14, accent, 1, 1);
+      }
+      return;
+    case 'crab': // wide shell, raised claws, stalk eyes
+      px(ctx, 3, 7, OUTLINE, 10, 6);
+      px(ctx, 4, 8, body, 8, 4);
+      px(ctx, 4, 8, bodyLight, 4, 1);
+      px(ctx, 4, 11, bodyShade, 8, 1);
+      px(ctx, 6, 9, belly, 4, 2);
+      px(ctx, 6, 4, OUTLINE, 1, 3); // eye stalks
+      px(ctx, 9, 4, OUTLINE, 1, 3);
+      px(ctx, 6, 3, body, 1, 1);
+      px(ctx, 9, 3, body, 1, 1);
+      px(ctx, 1, 4, accent, 3, 3); // raised claws
+      px(ctx, 2, 3, accent, 2, 1);
+      px(ctx, 12, 4, accent, 3, 3);
+      px(ctx, 12, 3, accent, 2, 1);
+      px(ctx, 2, 5, OUTLINE, 1, 1); // claw notches
+      px(ctx, 13, 5, OUTLINE, 1, 1);
+      px(ctx, 4, 13, OUTLINE, 2, 1); // legs
+      px(ctx, 7, 13, OUTLINE, 2, 1);
+      px(ctx, 10, 13, OUTLINE, 2, 1);
+      return;
+    case 'jelly': // translucent bell with trailing streamers
+      px(ctx, 4, 3, OUTLINE, 8, 5);
+      px(ctx, 3, 5, OUTLINE, 10, 3);
+      px(ctx, 5, 4, body, 6, 3);
+      px(ctx, 4, 6, body, 8, 2);
+      px(ctx, 5, 4, bodyLight, 3, 1);
+      px(ctx, 6, 6, accent, 4, 1); // glowing sum band
+      px(ctx, 6, 5, OUTLINE); // sleepy eyes
+      px(ctx, 9, 5, OUTLINE);
+      for (const [sx, len] of [[4, 4], [6, 6], [9, 5], [11, 4]] as const) {
+        px(ctx, sx, 8, body, 1, len); // streamers
+        px(ctx, sx, 8 + len, bodyShade, 1, 1);
+      }
+      px(ctx, 12, 2, '#e8f4ff', 1, 1); // sparkle
+      return;
+    case 'star': // five radiating arms with a center face
+      px(ctx, 7, 1, accent, 2, 5); // top arm
+      px(ctx, 6, 2, accent, 1, 3);
+      px(ctx, 9, 2, accent, 1, 3);
+      px(ctx, 1, 5, accent, 5, 2); // left arm
+      px(ctx, 10, 5, accent, 5, 2); // right arm
+      px(ctx, 3, 10, accent, 2, 4); // legs
+      px(ctx, 11, 10, accent, 2, 4);
+      px(ctx, 4, 5, body, 8, 6); // center body
+      px(ctx, 5, 4, body, 6, 8);
+      px(ctx, 5, 5, bodyLight, 3, 1);
+      px(ctx, 6, 7, OUTLINE); // face
+      px(ctx, 9, 7, OUTLINE);
+      px(ctx, 6, 7, '#ffffff', 1, 1);
+      px(ctx, 7, 9, belly, 2, 1); // smile
+      return;
+  }
 
   // base round body with outline, highlight, and shaded underside
   px(ctx, 4, 6, OUTLINE, 8, 8);
@@ -898,6 +1143,39 @@ function drawCreature(ctx: Ctx, s: CreatureStyle): void {
       px(ctx, 4, 2, belly, 1, 1);
       px(ctx, 6, 1, belly, 1, 1);
       break;
+    case 'tankTally': { // wide shell scored with tally marks
+      px(ctx, 2, 6, OUTLINE, 12, 8);
+      px(ctx, 3, 7, body, 10, 6);
+      px(ctx, 3, 7, bodyLight, 4, 1);
+      px(ctx, 3, 12, bodyShade, 10, 1);
+      px(ctx, 5, 8, OUTLINE); // wider-set eyes
+      px(ctx, 10, 8, OUTLINE);
+      px(ctx, 5, 8, '#ffffff', 1, 1);
+      for (const tx of [5, 7, 9, 11]) px(ctx, tx, 9, accent, 1, 3); // tallies
+      px(ctx, 4, 10, accent, 9, 1); // the strike-through: that's five!
+      px(ctx, 1, 12, body, 2, 2); // stubby legs
+      px(ctx, 13, 12, body, 2, 2);
+      break;
+    }
+    case 'tankMinus': { // wide gator with a bold minus emblem
+      px(ctx, 2, 6, OUTLINE, 12, 8);
+      px(ctx, 3, 7, body, 10, 6);
+      px(ctx, 3, 7, bodyLight, 4, 1);
+      px(ctx, 3, 12, bodyShade, 10, 1);
+      px(ctx, 4, 8, belly, 8, 4);
+      px(ctx, 5, 8, OUTLINE); // wider-set eyes
+      px(ctx, 10, 8, OUTLINE);
+      px(ctx, 5, 8, '#ffffff', 1, 1);
+      px(ctx, 5, 10, accent, 6, 2); // the minus stripe
+      px(ctx, 5, 10, '#fff3b0', 6, 1);
+      px(ctx, 13, 9, body, 3, 2); // snout
+      px(ctx, 14, 10, '#f8f8f0', 1, 1); // tooth
+      px(ctx, 3, 4, body, 2, 3); // ridged brow scales
+      px(ctx, 11, 4, body, 2, 3);
+      px(ctx, 1, 12, body, 2, 2); // stubby legs
+      px(ctx, 13, 12, body, 2, 2);
+      break;
+    }
     case 'tank': { // wide shell with plus emblem
       px(ctx, 2, 6, OUTLINE, 12, 8);
       px(ctx, 3, 7, body, 10, 6);
@@ -921,6 +1199,12 @@ function drawCreature(ctx: Ctx, s: CreatureStyle): void {
 
 const CREATURE_STYLES: Record<string, CreatureStyle> = {
   'creature-embercub': { body: '#e8783c', bodyLight: '#f59758', bodyShade: '#c45f2c', belly: '#f8c888', accent: '#f04830', shape: 'cub' },
+  // Evolved forms reuse their base shape with a bolder, hotter palette.
+  'creature-emberoar': { body: '#d9542c', bodyLight: '#f07040', bodyShade: '#b03e1e', belly: '#f8b060', accent: '#f8d048', shape: 'cub' },
+  'creature-bloomarch': { body: '#4a9c3c', bodyLight: '#66b856', bodyShade: '#38792c', belly: '#d8f0b0', accent: '#f2647c', shape: 'leaf' },
+  'creature-tidebound': { body: '#3878c8', bodyLight: '#5a96da', bodyShade: '#2c5f9e', belly: '#a8d8f0', accent: '#8cc4ee', shape: 'bunny' },
+  'creature-boulderit': { body: '#7e786f', bodyLight: '#9a948c', bodyShade: '#615c54', belly: '#aaa49a', accent: '#e8f4ff', shape: 'rock' },
+  'creature-galefinch': { body: '#a8b4c0', bodyLight: '#c4cdd6', bodyShade: '#8a95a2', belly: '#e8eef4', accent: '#5a70c4', shape: 'bird' },
   'creature-leafloo': { body: '#6ab84a', bodyLight: '#85cc66', bodyShade: '#549939', belly: '#c8e8a0', accent: '#3f9c4e', shape: 'leaf' },
   'creature-aquabbit': { body: '#58a8e0', bodyLight: '#7cbfec', bodyShade: '#458cc0', belly: '#c0e4f8', accent: '#f2a0b8', shape: 'bunny' },
   'creature-pebblit': { body: '#9a948c', bodyLight: '#b3ada4', bodyShade: '#7e786f', belly: '#c4beb4', accent: '#6d6760', shape: 'rock' },
@@ -931,6 +1215,17 @@ const CREATURE_STYLES: Record<string, CreatureStyle> = {
   'creature-croakle': { body: '#6b9a4a', bodyLight: '#85b362', bodyShade: '#557d3a', belly: '#d8e0a0', accent: '#3d5c38', shape: 'frog' },
   'creature-wisplit': { body: '#c8d4dc', bodyLight: '#e4ecf2', bodyShade: '#a8b8c4', belly: '#f0f4f8', accent: '#8cc4ee', shape: 'wisp' },
   'creature-snailby': { body: '#d9a05a', bodyLight: '#e8b878', bodyShade: '#b88344', belly: '#f2e0c0', accent: '#8a5a2b', shape: 'snail' },
+  'creature-subgator': { body: '#557d3a', bodyLight: '#6b9a4a', bodyShade: '#425f2e', belly: '#a8c078', accent: '#f8d048', shape: 'tankMinus' },
+  // water dwellers
+  'creature-carpi': { body: '#f2a040', bodyLight: '#f8c070', bodyShade: '#d08028', belly: '#f8e8d0', accent: '#f04830', shape: 'fish' },
+  'creature-octoplus': { body: '#9a6ac8', bodyLight: '#b488da', bodyShade: '#7e50a8', belly: '#e0d0f0', accent: '#f8d048', shape: 'octo' },
+  'creature-crabacus': { body: '#d9542c', bodyLight: '#f07040', bodyShade: '#b03e1e', belly: '#f8c888', accent: '#c83a3a', shape: 'crab' },
+  'creature-jellisum': { body: '#f2a0b8', bodyLight: '#f8c4d2', bodyShade: '#d0839c', belly: '#fce8ee', accent: '#f8d048', shape: 'jelly' },
+  'creature-fivestar': { body: '#f28066', bodyLight: '#f8a48e', bodyShade: '#d0654e', belly: '#f8d8c8', accent: '#e86048', shape: 'star' },
+  'creature-turtally': { body: '#3aa88c', bodyLight: '#56c4a8', bodyShade: '#2c8a70', belly: '#c0e8dc', accent: '#26203a', shape: 'tankTally' },
+  // beach dwellers
+  'creature-sandigit': { body: '#d9b873', bodyLight: '#e5c98a', bodyShade: '#b8954e', belly: '#f0e0b8', accent: '#c83a3a', shape: 'rock' },
+  'creature-gulltiply': { body: '#f0f4f8', bodyLight: '#ffffff', bodyShade: '#c8d4dc', belly: '#ffffff', accent: '#f2a040', shape: 'bird' },
 };
 
 export function generateCreatureTextures(scene: Phaser.Scene): void {
@@ -944,6 +1239,7 @@ export function generateAllTextures(scene: Phaser.Scene): void {
   generateCharacterTextures(scene);
   generateCreatureTextures(scene);
   generateFurnitureTextures(scene);
+  generateTrophyTextures(scene);
 }
 
 // ---------------------------------------------------- ambient tile motion
@@ -964,6 +1260,8 @@ export function startTileAnimations(scene: Phaser.Scene): void {
   register('tile-tallgrass', drawTallGrassFrame, 2);
   register('tile-marsh-water', drawMarshWaterFrame, 3);
   register('tile-marsh-grass', drawMarshGrassFrame, 2);
+  register('tile-ocean', drawOceanFrame, 3);
+  register('tile-dune-grass', drawDuneGrassFrame, 2);
 
   let frame = 0;
   scene.time.addEvent({
@@ -990,6 +1288,7 @@ export const TILE_TEXTURES: Record<string, string> = {
   R: 'tile-roof',
   B: 'tile-wall',
   D: 'tile-door-gym',
+  N: 'tile-door-subgym',
   d: 'tile-door-house',
   S: 'tile-sign',
   F: 'tile-fence',
@@ -1005,6 +1304,13 @@ export const TILE_TEXTURES: Record<string, string> = {
   r: 'tile-reeds',
   u: 'tile-mushroom',
   L: 'tile-lilypad',
+  // quotient coast
+  s: 'tile-sand',
+  O: 'tile-ocean',
+  v: 'tile-dune-grass',
+  k: 'tile-palm',
+  c: 'tile-shells',
+  x: 'tile-coast-rock',
   // player house
   Q: 'tile-roof-player',
   q: 'tile-wall-player',
